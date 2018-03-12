@@ -2,6 +2,7 @@
 package io.cnct.pipeline;
 
 import org.yaml.snakeyaml.Yaml
+import io.cnct.pipeline.*
 
 def execute() {
 
