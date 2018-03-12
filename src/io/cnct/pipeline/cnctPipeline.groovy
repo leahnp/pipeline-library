@@ -1,6 +1,8 @@
 // /src/io/cnct/pipeline/cnctPipeline.groovy
 package io.cnct.pipeline;
 
+import org.yaml.snakeyaml.Yaml
+
 def execute() {
 
   node {

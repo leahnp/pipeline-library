@@ -1,8 +1,6 @@
 // /src/io/cnct/pipeline/chartRepoBuilder.groovy
 package io.cnct.pipeline;
 
-import org.yaml.snakeyaml.Yaml
-
 chartRepoBuilder(pipelineDefinition) {
   // Create a globally accessible variable that makes
   // the YAML pipeline definition available to all scripts
