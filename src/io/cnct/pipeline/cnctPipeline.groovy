@@ -3,10 +3,7 @@ package io.cnct.pipeline;
 
 import org.yaml.snakeyaml.Yaml
 def execute() {
-
-  node {
-
-    podTemplate(label: "${env.JOB_NAME}-${env.BUILD_ID}", containers: [
+  podTemplate(label: "${env.JOB_NAME}-${env.BUILD_ID}", containers: [
       containerTemplate(
         name: 'initializer',
         image: 'busybox',
@@ -14,7 +11,7 @@ def execute() {
         alwaysPullImage: true
       )
     ]) {
-
+    node("${env.JOB_NAME}-${env.BUILD_ID}") {
       stage('Initialize') {
         checkout scm
         echo 'Loading pipeline definition'
@@ -36,7 +33,7 @@ def execute() {
           new chartRepoBuilder().executePipeline(pipelineDefinition)
         default:
           error "Unsupported pipeline '${pipelineDefinition.pipelineType}'!"
-      }
+      }        
     }
   }
 }
