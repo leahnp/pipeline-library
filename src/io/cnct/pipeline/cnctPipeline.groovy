@@ -33,7 +33,7 @@ def execute() {
         case 'chart':
           // Instantiate and execute a chart builder
           echo pipelineDefinition.pipelineType
-          new chartRepoBuilder(pipelineDefinition).executePipeline()
+          new chartRepoBuilder().executePipeline(pipelineDefinition)
         default:
           error "Unsupported pipeline '${pipelineDefinition.pipelineType}'!"
       }
