@@ -2,8 +2,6 @@
 package io.cnct.pipeline;
 
 import org.yaml.snakeyaml.Yaml
-import io.cnct.pipeline.*
-
 def execute() {
 
   node {
@@ -20,23 +18,20 @@ def execute() {
       stage('Initialize') {
         checkout scm
         echo 'Loading pipeline definition'
-        
-        Yaml parser = new Yaml()
-        def pipelineDefinition = [:] 
-        
+        Yaml parser = new Yaml()      
         try {
-          pipelineDefinition = parser.load(new File(pwd() + '/pipeline.yaml').text)
+          Map pipelineDefinition = parser.load(new File(pwd() + '/pipeline.yaml').text)
         } catch(FileNotFoundException e) {
           error "${pwd()}/pipeline.yaml not found!"
         }
+      }
 
-        switch(pipelineDefinition.pipelineType) {
-          case 'chart':
-            // Instantiate and execute a chart builder
-            new chartRepoBuilder(pipelineDefinition).executePipeline()
-          default:
-            error "Unsupported pipeline '${pipelineDefinition.pipelineType}'!"
-        }
+      switch(pipelineDefinition.pipelineType) {
+        case 'chart':
+          // Instantiate and execute a chart builder
+          new chartRepoBuilder(pipelineDefinition).executePipeline()
+        default:
+          error "Unsupported pipeline '${pipelineDefinition.pipelineType}'!"
       }
     }
   }
