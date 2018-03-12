@@ -2,7 +2,6 @@
 package io.cnct.pipeline;
 
 import org.yaml.snakeyaml.Yaml
-import io.cnct.pipeline.*
 
 def execute() {
 
@@ -33,7 +32,7 @@ def execute() {
         switch(pipelineDefinition.pipelineType) {
           case 'chart':
             // Instantiate and execute a chart builder
-            new chartRepoBuilder(pipelineDefinition).executePipeline()
+            new io.cnct.pipeline.chartRepoBuilder(pipelineDefinition).executePipeline()
           default:
             error "Unsupported pipeline '${pipelineDefinition.pipelineType}'!"
         }
