@@ -1,5 +1,4 @@
 // /src/io/cnct/pipeline/chartRepoBuilder.groovy
-#!/usr/bin/groovy
 package io.cnct.pipeline;
 
 chartRepoBuilder(pipelineDefinition) {
