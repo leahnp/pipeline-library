@@ -1,5 +1,4 @@
 // /src/io/cnct/pipeline/cnctPipeline.groovy
-#!/bin/groovy
 package io.cnct.pipeline;
 
 def execute() {
