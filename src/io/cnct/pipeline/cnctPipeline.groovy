@@ -24,9 +24,9 @@ def execute() {
         Map pipelineDefinition = null 
         
         try {
-          pipelineDefinition = parser.load(new File(pwd() + '/pipeline.yml').text)
+          pipelineDefinition = parser.load(new File(pwd() + '/pipeline.yaml').text)
         } catch(FileNotFoundException e) {
-          error "${pwd()}/pipeline.yml not found!"
+          error "${pwd()}/pipeline.yaml not found!"
         }
 
         switch(pipelineDefinition.pipelineType) {
