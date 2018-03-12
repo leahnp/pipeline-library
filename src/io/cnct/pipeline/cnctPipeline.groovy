@@ -18,11 +18,11 @@ def execute() {
       stage('Initialize') {
         checkout scm
         echo 'Loading pipeline definition'
-        
-        parser = new Yaml()
+  
         pipelineDefinition = [:] 
         
         try {
+          Yaml parser = new Yaml()
           pipelineDefinition = parser.load(new File(pwd() + '/pipeline.yaml').text)
           echo pipelineDefinition.pipelineType
         } catch(FileNotFoundException e) {
