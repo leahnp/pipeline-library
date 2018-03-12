@@ -11,11 +11,14 @@ def execute() {
       Yaml parser = new Yaml()      
       try {
         Map pipelineDefinition = parser.load(new File(pwd() + '/pipeline.yaml').text)
+        echo pipelineDefinition.pipelineType
       } catch(FileNotFoundException e) {
         error "${pwd()}/pipeline.yaml not found!"
       }
+      echo pipelineDefinition.pipelineType
     }
 
+    echo pipelineDefinition.pipelineType
     switch(pipelineDefinition.pipelineType) {
       case 'chart':
         // Instantiate and execute a chart builder
