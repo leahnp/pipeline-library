@@ -7,7 +7,7 @@ def execute() {
 
   node {
 
-    podTemplate(label: "CI-${application}", containers: [
+    podTemplate(label: "${env.JOB_NAME}-${env.BUILD_ID}", containers: [
       containerTemplate(
         name: 'initializer',
         image: 'busybox',
