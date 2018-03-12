@@ -1,13 +1,13 @@
 // /src/io/cnct/pipeline/chartRepoBuilder.groovy
 package io.cnct.pipeline;
 
-chartRepoBuilder(pipelineDefinition) {
+chartRepoBuilder() {
   // Create a globally accessible variable that makes
   // the YAML pipeline definition available to all scripts
-  pd = pipelineDefinition
+  //pd = pipelineDefinition
 }
 
-def executePipeline() {
+def executePipeline(pipelineDefinition) {
   node {
     properties(
       [ disableConcurrentBuilds() ]
