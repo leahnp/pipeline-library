@@ -24,13 +24,10 @@ def execute() {
         try {
           Yaml parser = new Yaml()
           pipelineDefinition = parser.load(new File(pwd() + '/pipeline.yaml').text)
-          echo pipelineDefinition.pipelineType
         } catch(FileNotFoundException e) {
           error "${pwd()}/pipeline.yaml not found!"
         }
       }
-
-      echo pipelineDefinition.pipelineType
 
       switch(pipelineDefinition.pipelineType) {
         case 'chart':
