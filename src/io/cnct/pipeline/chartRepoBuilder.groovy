@@ -13,7 +13,7 @@ def executePipeline() {
       [ disableConcurrentBuilds() ]
     )
 
-    podTemplate(label: "chart-builder", containers: [
+    podTemplate(label: "${env.JOB_NAME}-${env.BUILD_ID}", containers: [
       containerTemplate(
         name: 'dind',
         image: 'docker:stable-dind',
