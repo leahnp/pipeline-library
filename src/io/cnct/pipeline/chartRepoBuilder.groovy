@@ -2,14 +2,11 @@
 package io.cnct.pipeline;
 
 def executePipeline(pipelineDefinition) {
-  
-  pd = pipelineDefinition
-
   properties(
     [ disableConcurrentBuilds() ]
   )
 
-  podTemplate(label: "${env.JOB_NAME}-${env.BUILD_ID}", containers: [
+  podTemplate(label: name.node(), containers: [
     containerTemplate(
       name: 'dind',
       image: 'docker:stable-dind',
@@ -18,7 +15,7 @@ def executePipeline(pipelineDefinition) {
     ),
     containerTemplate(
       name: 'docker', 
-      image: 'docker', 
+      image: 'docker:stable', 
       command: 'cat', 
       ttyEnabled: true,
       envVars: [envVar(key: 'DOCKER_HOST', value: 'localhost:2375')]
@@ -27,9 +24,11 @@ def executePipeline(pipelineDefinition) {
   volumes: [
     emptyDirVolume(mountPath: '/var/lib/docker', memory: false),
   ]) {
-    node("${env.JOB_NAME}-${env.BUILD_ID}") {
-      stage('Build') {
-        sh "docker run busybox sh -c 'echo hi'"
+    node(name.node()) {
+      container('docker') {
+        stage('Build') {
+          sh "docker run busybox sh -c 'echo hi'"
+        }
       }
     }
   }
