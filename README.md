@@ -445,4 +445,4 @@ prod:
 
 ## Pipeline flow
 
-![pipeline flow](docs/pipeline.png)
+![pipeline flow](doc/pipeline.png)
