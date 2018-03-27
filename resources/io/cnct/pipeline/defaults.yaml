@@ -1,0 +1,35 @@
+---
+jenkinsNamespace: maratoid
+prodNamespace: prod
+stageNamespace: staging
+serviceAccount: jenkins-pipeline-jenkins
+doDeploy: none
+retries: 1
+timeout: 600
+versionfile: .versionfile
+shell: sh
+images: 
+  dind: docker:stable-dind
+  docker: docker:stable
+  helm: quay.io/maratoid/helm:latest
+  vault: quay.io/maratoid/vault:latest
+  script: quay.io/maratoid/script:latest
+vault:
+  server: https://vault-access.maratoid.svc.cluster.local
+  credentials: vault-plugin
+  api: v1
+  tls:
+    secret: "vault-client-tls"
+    cert: "vault-client.pem"
+    key: "vault-client-key.pem"
+    ca: "ca.pem"
+helm:
+  namespace: kube-system
+  registry: http://museum-chartmuseum.maratoid.svc.cluster.local:8080
+docker:
+  registry: quay.io
+  credentials: docker-creds
+  testTag: test
+  stageTag: staging
+  prodTag: prod
+
