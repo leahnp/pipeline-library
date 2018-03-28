@@ -433,14 +433,10 @@ def chartLintHandler(scmVars) {
     stage('Linting charts') {
       for (chart in chartsToUpdate) {
         // unstash chart yaml changes
-        unstashCheck(
-          name: "${chart.chart}-chartyaml-${env.BUILD_ID}".replaceAll('-','_')
-        )
+        unstashCheck("${chart.chart}-chartyaml-${env.BUILD_ID}".replaceAll('-','_'))
 
         // unstash values changes if applicable
-        unstashCheck(
-          name: "${chart.chart}-values-${env.BUILD_ID}".replaceAll('-','_')
-        )
+        unstashCheck("${chart.chart}-values-${env.BUILD_ID}".replaceAll('-','_'))
       }
 
       parallel parallelLintSteps
@@ -482,9 +478,7 @@ def chartProdHandler(scmVars) {
         )
 
         // unstash values changes if applicable
-        unstashCheck(
-          name: "${chart.chart}-values-${env.BUILD_ID}".replaceAll('-','_')
-        )
+        unstashCheck("${chart.chart}-values-${env.BUILD_ID}".replaceAll('-','_'))
 
         // package chart, send it to registry
         parallelChartSteps["${chart.chart}-upload"] = {
@@ -516,14 +510,10 @@ def deployToTestHandler(scmVars) {
       def deploySteps = [:]
       for (chart in chartsToUpdate) {
         // unstash chart yaml if applicable
-        unstashCheck(
-          name: "${chart.chart}-chartyaml-${env.BUILD_ID}".replaceAll('-','_')
-        )
+        unstashCheck("${chart.chart}-chartyaml-${env.BUILD_ID}".replaceAll('-','_'))
 
         // unstash values changes if applicable
-        unstashCheck(
-          name: "${chart.chart}-values-${env.BUILD_ID}".replaceAll('-','_')
-        )
+        unstashCheck("${chart.chart}-values-${env.BUILD_ID}".replaceAll('-','_'))
 
         // deploy chart to the correct namespace
         def commandString = """
@@ -560,14 +550,10 @@ def deployToStageHandler(scmVars) {
       def deploySteps = [:]
       for (chart in chartsToUpdate) {
         // unstash chart yaml if applicable
-        unstashCheck(
-          name: "${chart.chart}-chartyaml-${env.BUILD_ID}".replaceAll('-','_')
-        )
+        unstashCheck("${chart.chart}-chartyaml-${env.BUILD_ID}".replaceAll('-','_'))
 
         // unstash values changes if applicable
-        unstashCheck(
-          name: "${chart.chart}-values-${env.BUILD_ID}".replaceAll('-','_')
-        )
+        unstashCheck("${chart.chart}-values-${env.BUILD_ID}".replaceAll('-','_'))
 
         // deploy chart to the correct namespace
         def commandString = """
@@ -600,14 +586,10 @@ def deployToProdHandler(scmVars) {
     stage('Deploying to prod namespace') {
       for (chart in chartsToUpdate) {
         // unstash chart yaml changes if applicable
-        unstashCheck(
-          name: "${chart.chart}-chartyaml-${env.BUILD_ID}".replaceAll('-','_')
-        )
+        unstashCheck("${chart.chart}-chartyaml-${env.BUILD_ID}".replaceAll('-','_'))
 
         // unstash values changes if applicable
-        unstashCheck(
-          name: "${chart.chart}-values-${env.BUILD_ID}".replaceAll('-','_')
-        )
+        unstashCheck("${chart.chart}-values-${env.BUILD_ID}".replaceAll('-','_'))
 
         chartYaml = parseYaml(readFile("${pwd()}/charts/${chart.chart}/Chart.yaml"))
 
