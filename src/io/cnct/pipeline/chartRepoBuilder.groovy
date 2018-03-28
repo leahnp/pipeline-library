@@ -35,7 +35,7 @@ def executePipeline(pipelineDef) {
       runMerge()
     }
 
-    notifyMessage = 'Build succeeded for ' + "${env.JOB_NAME} number ${env.BUILD_NUMBER} (env.BUILD_URL}) : ${e.getMessage()}"
+    notifyMessage = 'Build succeeded for ' + "${env.JOB_NAME} number ${env.BUILD_NUMBER} (env.BUILD_URL})"
   } catch (e) {
     currentBuild.result = 'FAILURE'
     notifyMessage = 'Build failed for ' + "${env.JOB_NAME} number ${env.BUILD_NUMBER} (env.BUILD_URL}) : ${e.getMessage()}"
