@@ -6,5 +6,5 @@ def call(Map pipelineVals, String message) {
     message: message, 
     teamDomain: pipelineVals.slack.domain,
     tokenCredentialId: pipelineVals.slack.credentials
-  }
+  )
 }
