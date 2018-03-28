@@ -720,10 +720,8 @@ def collectUpdatedCharts () {
   def versionfileChanged = isPathChange(defaults.versionfile)
   if (versionfileChanged == 0) {
     for (config in pipeline.configs) {
-      if (component.chart) {
-        if (config.chart == component.chart ) {
-          check(chartsToUpdate, config)
-        }
+      if (config.chart) {
+        check(chartsToUpdate, config)
       }
     }
   } else {
