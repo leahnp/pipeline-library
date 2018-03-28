@@ -433,12 +433,12 @@ def chartLintHandler(scmVars) {
     stage('Linting charts') {
       for (chart in chartsToUpdate) {
         // unstash chart yaml changes
-        unstash(
+        unstashCheck(
           name: "${chart.chart}-chartyaml-${env.BUILD_ID}".replaceAll('-','_')
         )
 
         // unstash values changes if applicable
-        unstash(
+        unstashCheck(
           name: "${chart.chart}-values-${env.BUILD_ID}".replaceAll('-','_')
         )
       }
@@ -482,7 +482,7 @@ def chartProdHandler(scmVars) {
         )
 
         // unstash values changes if applicable
-        unstash(
+        unstashCheck(
           name: "${chart.chart}-values-${env.BUILD_ID}".replaceAll('-','_')
         )
 
@@ -516,12 +516,12 @@ def deployToTestHandler(scmVars) {
       def deploySteps = [:]
       for (chart in chartsToUpdate) {
         // unstash chart yaml if applicable
-        unstash(
+        unstashCheck(
           name: "${chart.chart}-chartyaml-${env.BUILD_ID}".replaceAll('-','_')
         )
 
         // unstash values changes if applicable
-        unstash(
+        unstashCheck(
           name: "${chart.chart}-values-${env.BUILD_ID}".replaceAll('-','_')
         )
 
@@ -560,12 +560,12 @@ def deployToStageHandler(scmVars) {
       def deploySteps = [:]
       for (chart in chartsToUpdate) {
         // unstash chart yaml if applicable
-        unstash(
+        unstashCheck(
           name: "${chart.chart}-chartyaml-${env.BUILD_ID}".replaceAll('-','_')
         )
 
         // unstash values changes if applicable
-        unstash(
+        unstashCheck(
           name: "${chart.chart}-values-${env.BUILD_ID}".replaceAll('-','_')
         )
 
@@ -600,12 +600,12 @@ def deployToProdHandler(scmVars) {
     stage('Deploying to prod namespace') {
       for (chart in chartsToUpdate) {
         // unstash chart yaml changes if applicable
-        unstash(
+        unstashCheck(
           name: "${chart.chart}-chartyaml-${env.BUILD_ID}".replaceAll('-','_')
         )
 
         // unstash values changes if applicable
-        unstash(
+        unstashCheck(
           name: "${chart.chart}-values-${env.BUILD_ID}".replaceAll('-','_')
         )
 
