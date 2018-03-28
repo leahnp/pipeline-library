@@ -56,7 +56,7 @@ def setDefaults(rawSettings, defaults) {
     rawSettings.slack = [:]
   }
   if (!rawSettings.slack.channel) {
-    rawSettings.slack = defaults.slack.channel
+    rawSettings.slack.channel = defaults.slack.channel
   }
   rawSettings.slack.credentials = defaults.slack.credentials
   rawSettings.slack.domain = defaults.slack.domain
