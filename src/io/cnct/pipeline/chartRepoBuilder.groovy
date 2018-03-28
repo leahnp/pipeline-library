@@ -17,20 +17,38 @@ def executePipeline(pipelineDef) {
     ]
   )
 
-  initializeHandler();
+  def err = null
+  def notifyMessage = ""
 
-  if (isPRBuild || isSelfTest) {
-    runPR()
-  }
-
-  if (isSelfTest) {
+  try {
     initializeHandler();
-  }
 
-  if (isMasterBuild || isSelfTest) {
-    runMerge()
-  }
+    if (isPRBuild || isSelfTest) {
+      runPR()
+    }
 
+    if (isSelfTest) {
+      initializeHandler();
+    }
+
+    if (isMasterBuild || isSelfTest) {
+      runMerge()
+    }
+
+    notifyMessage = 'Build succeeded for ' + "${env.JOB_NAME} number ${env.BUILD_NUMBER} (env.BUILD_URL}) : ${e.getMessage()}"
+  } catch (e) {
+    currentBuild.result = 'FAILURE'
+    notifyMessage = 'Build failed for ' + "${env.JOB_NAME} number ${env.BUILD_NUMBER} (env.BUILD_URL}) : ${e.getMessage()}"
+    err = e
+  } finally {
+    
+    if (err) {
+      slackFail(pipeline, notifyMessage)
+      throw err
+    } else {
+      slackOk(pipeline, notifyMessage)
+    } 
+  }
 }
 
 def initializeHandler() {
