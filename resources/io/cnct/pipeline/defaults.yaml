@@ -8,6 +8,10 @@ retries: 1
 timeout: 600
 versionfile: .versionfile
 shell: sh
+slack:
+  channel: #team-migrations
+  credentials: slack-access
+  domain: "samsung-cnct"
 images: 
   dind: docker:stable-dind
   docker: docker:stable

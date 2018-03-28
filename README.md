@@ -78,6 +78,9 @@ retries | Number of retries on deploys and tests
 timeout | Helm timeout
 versionfile | Name of a version file required for every pipeline application repository
 shell | Default shell for script execution
+slack.channel | Default notification channel
+slack.credentials | Jenkins slack credentials id
+slack.domain | Slack team domain 
 image.dind | Default image for docker-in-docker container
 image.docker | Default image for docker client container
 image.helm | Default image for helm client container
@@ -110,6 +113,10 @@ retries: 1
 timeout: 600
 versionfile: .versionfile
 shell: sh
+slack:
+  channel: #team-migrations
+  credentials: slack-access
+  domain: "samsung-cnct"
 images: 
   dind: docker:stable-dind
   docker: docker:stable
@@ -238,7 +245,7 @@ envValues.[].secret | Path to Vault K/V value. I.e `kv-backend/kv-name/kv-value-
 
 #### slack
 
-SLack notification info. (TO BE IMPLEMENTED)
+SLack notification info.
 
 Setting | Description
 --- | ---

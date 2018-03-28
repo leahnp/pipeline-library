@@ -52,11 +52,15 @@ def setDefaults(rawSettings, defaults) {
   }
 
   // check slack settings
-  if (rawSettings.slack) {
-    if (!rawSettings.slack.channel) {
-      rawSettings.slack = null
-    }
+  if (!rawSettings.slack) {
+    rawSettings.slack = [:]
   }
+  if (!rawSettings.slack.channel) {
+    rawSettings.slack.channel = defaults.slack.channel
+  }
+  rawSettings.slack.credentials = defaults.slack.credentials
+  rawSettings.slack.domain = defaults.slack.domain
+
 
   // check vault settings
   if (!rawSettings.vault) {

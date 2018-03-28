@@ -17,20 +17,38 @@ def executePipeline(pipelineDef) {
     ]
   )
 
-  initializeHandler();
+  def err = null
+  def notifyMessage = ""
 
-  if (isPRBuild || isSelfTest) {
-    runPR()
-  }
-
-  if (isSelfTest) {
+  try {
     initializeHandler();
-  }
 
-  if (isMasterBuild || isSelfTest) {
-    runMerge()
-  }
+    if (isPRBuild || isSelfTest) {
+      runPR()
+    }
 
+    if (isSelfTest) {
+      initializeHandler();
+    }
+
+    if (isMasterBuild || isSelfTest) {
+      runMerge()
+    }
+
+    notifyMessage = 'Build succeeded for ' + "${env.JOB_NAME} number ${env.BUILD_NUMBER} (${env.RUN_DISPLAY_URL})"
+  } catch (e) {
+    currentBuild.result = 'FAILURE'
+    notifyMessage = 'Build failed for ' + "${env.JOB_NAME} number ${env.BUILD_NUMBER} (${env.RUN_DISPLAY_URL}) : ${e.getMessage()}"
+    err = e
+  } finally {
+    
+    if (err) {
+      slackFail(pipeline, notifyMessage)
+      throw err
+    } else {
+      slackOk(pipeline, notifyMessage)
+    } 
+  }
 }
 
 def initializeHandler() {
@@ -433,14 +451,10 @@ def chartLintHandler(scmVars) {
     stage('Linting charts') {
       for (chart in chartsToUpdate) {
         // unstash chart yaml changes
-        unstash(
-          name: "${chart.chart}-chartyaml-${env.BUILD_ID}".replaceAll('-','_')
-        )
+        unstashCheck("${chart.chart}-chartyaml-${env.BUILD_ID}".replaceAll('-','_'))
 
         // unstash values changes if applicable
-        unstash(
-          name: "${chart.chart}-values-${env.BUILD_ID}".replaceAll('-','_')
-        )
+        unstashCheck("${chart.chart}-values-${env.BUILD_ID}".replaceAll('-','_'))
       }
 
       parallel parallelLintSteps
@@ -482,9 +496,7 @@ def chartProdHandler(scmVars) {
         )
 
         // unstash values changes if applicable
-        unstash(
-          name: "${chart.chart}-values-${env.BUILD_ID}".replaceAll('-','_')
-        )
+        unstashCheck("${chart.chart}-values-${env.BUILD_ID}".replaceAll('-','_'))
 
         // package chart, send it to registry
         parallelChartSteps["${chart.chart}-upload"] = {
@@ -516,14 +528,10 @@ def deployToTestHandler(scmVars) {
       def deploySteps = [:]
       for (chart in chartsToUpdate) {
         // unstash chart yaml if applicable
-        unstash(
-          name: "${chart.chart}-chartyaml-${env.BUILD_ID}".replaceAll('-','_')
-        )
+        unstashCheck("${chart.chart}-chartyaml-${env.BUILD_ID}".replaceAll('-','_'))
 
         // unstash values changes if applicable
-        unstash(
-          name: "${chart.chart}-values-${env.BUILD_ID}".replaceAll('-','_')
-        )
+        unstashCheck("${chart.chart}-values-${env.BUILD_ID}".replaceAll('-','_'))
 
         // deploy chart to the correct namespace
         def commandString = """
@@ -560,14 +568,10 @@ def deployToStageHandler(scmVars) {
       def deploySteps = [:]
       for (chart in chartsToUpdate) {
         // unstash chart yaml if applicable
-        unstash(
-          name: "${chart.chart}-chartyaml-${env.BUILD_ID}".replaceAll('-','_')
-        )
+        unstashCheck("${chart.chart}-chartyaml-${env.BUILD_ID}".replaceAll('-','_'))
 
         // unstash values changes if applicable
-        unstash(
-          name: "${chart.chart}-values-${env.BUILD_ID}".replaceAll('-','_')
-        )
+        unstashCheck("${chart.chart}-values-${env.BUILD_ID}".replaceAll('-','_'))
 
         // deploy chart to the correct namespace
         def commandString = """
@@ -600,14 +604,10 @@ def deployToProdHandler(scmVars) {
     stage('Deploying to prod namespace') {
       for (chart in chartsToUpdate) {
         // unstash chart yaml changes if applicable
-        unstash(
-          name: "${chart.chart}-chartyaml-${env.BUILD_ID}".replaceAll('-','_')
-        )
+        unstashCheck("${chart.chart}-chartyaml-${env.BUILD_ID}".replaceAll('-','_'))
 
         // unstash values changes if applicable
-        unstash(
-          name: "${chart.chart}-values-${env.BUILD_ID}".replaceAll('-','_')
-        )
+        unstashCheck("${chart.chart}-values-${env.BUILD_ID}".replaceAll('-','_'))
 
         chartYaml = parseYaml(readFile("${pwd()}/charts/${chart.chart}/Chart.yaml"))
 
@@ -720,10 +720,8 @@ def collectUpdatedCharts () {
   def versionfileChanged = isPathChange(defaults.versionfile)
   if (versionfileChanged == 0) {
     for (config in pipeline.configs) {
-      if (component.chart) {
-        if (config.chart == component.chart ) {
-          check(chartsToUpdate, config)
-        }
+      if (config.chart) {
+        check(chartsToUpdate, config)
       }
     }
   } else {
