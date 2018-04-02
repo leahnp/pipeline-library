@@ -44,6 +44,7 @@ def executePipeline(pipelineDef) {
     
     if (err) {
       slackFail(pipeline, notifyMessage)
+      err.printStackTrace()
       throw err
     } else {
       slackOk(pipeline, notifyMessage)
