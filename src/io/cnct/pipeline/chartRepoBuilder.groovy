@@ -199,6 +199,7 @@ def runMerge() {
 def rootFsTestHandler(scmVars) {
   def gitCommit = scmVars.GIT_COMMIT
   def modifiedCharts = []
+  def unModifiedCharts = []
 
   def parallelBuildSteps = [:]
   def parallelTagSteps = [:]
@@ -236,6 +237,10 @@ def rootFsTestHandler(scmVars) {
       if (component.chart) {
         modifiedCharts += component
       }
+    } else {
+      if (component.chart) {
+        unModifiedCharts += component
+      }
     }
   }
   container('docker') {
@@ -266,6 +271,19 @@ def rootFsTestHandler(scmVars) {
           includes: "charts/${modifiedChart.chart}/values.yaml"
         )
       }
+
+      // process unmodified chart values, as those need to be injected with last prod tag 
+      for (unModifiedChart in unModifiedCharts) {
+        def valuesYaml = parseYaml(readFile("${pwd()}/charts/${unModifiedChart.chart}/values.yaml"))
+
+        mapValueByPath(unModifiedChart.value, valuesYaml, "${unModifiedChart.image}:${defaults.docker.prodTag}")
+        toYamlFile(valuesYaml, "${pwd()}/charts/${unModifiedChart.chart}/values.yaml")
+
+        stash(
+          name: "${unModifiedChart.chart}-values-${env.BUILD_ID}".replaceAll('-','_'),
+          includes: "charts/${unModifiedChart.chart}/values.yaml"
+        )
+      }
     }
   }
 }
@@ -275,6 +293,7 @@ def rootFsTestHandler(scmVars) {
 def rootFsStageHandler(scmVars) {
   def gitCommit = scmVars.GIT_COMMIT
   def modifiedCharts = []
+  def unModifiedCharts = []
 
   def parallelTagSteps = [:]
   def parallelPushSteps = [:]
@@ -297,6 +316,10 @@ def rootFsStageHandler(scmVars) {
 
       if (component.chart) {
         modifiedCharts += component
+      } 
+    } else {
+      if (component.chart) {
+        unModifiedCharts += component
       }
     }
   }
@@ -328,6 +351,19 @@ def rootFsStageHandler(scmVars) {
           includes: "charts/${modifiedChart.chart}/values.yaml"
         )
       }
+
+      // process unmodified chart values, as those need to be injected with last prod tag 
+      for (unModifiedChart in unModifiedCharts) {
+        def valuesYaml = parseYaml(readFile("${pwd()}/charts/${unModifiedChart.chart}/values.yaml"))
+
+        mapValueByPath(unModifiedChart.value, valuesYaml, "${unModifiedChart.image}:${defaults.docker.prodTag}")
+        toYamlFile(valuesYaml, "${pwd()}/charts/${unModifiedChart.chart}/values.yaml")
+
+        stash(
+          name: "${unModifiedChart.chart}-values-${env.BUILD_ID}".replaceAll('-','_'),
+          includes: "charts/${unModifiedChart.chart}/values.yaml"
+        )
+      }
     }
   }
 }
@@ -337,6 +373,7 @@ def rootFsStageHandler(scmVars) {
 def rootFsProdHandler(scmVars) {
   def gitCommit = scmVars.GIT_COMMIT
   def modifiedCharts = []
+  def unModifiedCharts = []
 
   def parallelBuildSteps = [:]
   def parallelTagSteps = [:]
@@ -371,6 +408,10 @@ def rootFsProdHandler(scmVars) {
       if (component.chart) {
         modifiedCharts += component
       }
+    } else {
+      if (component.chart) {
+        unModifiedCharts += component
+      }
     }
   }
 
@@ -400,6 +441,19 @@ def rootFsProdHandler(scmVars) {
         stash(
           name: "${modifiedChart.chart}-values-${env.BUILD_ID}".replaceAll('-','_'),
           includes: "charts/${modifiedChart.chart}/values.yaml"
+        )
+      }
+
+      // process unmodified chart values, as those need to be injected with last prod tag 
+      for (unModifiedChart in unModifiedCharts) {
+        def valuesYaml = parseYaml(readFile("${pwd()}/charts/${unModifiedChart.chart}/values.yaml"))
+
+        mapValueByPath(unModifiedChart.value, valuesYaml, "${unModifiedChart.image}:${defaults.docker.prodTag}")
+        toYamlFile(valuesYaml, "${pwd()}/charts/${unModifiedChart.chart}/values.yaml")
+
+        stash(
+          name: "${unModifiedChart.chart}-values-${env.BUILD_ID}".replaceAll('-','_'),
+          includes: "charts/${unModifiedChart.chart}/values.yaml"
         )
       }
     }
