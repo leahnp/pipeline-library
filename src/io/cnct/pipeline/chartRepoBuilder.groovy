@@ -44,7 +44,12 @@ def executePipeline(pipelineDef) {
     
     if (err) {
       slackFail(pipeline, notifyMessage)
-      err.printStackTrace()
+      
+      def sw = new StringWriter()
+      def pw = new PrintWriter(sw)
+      err.printStackTrace(pw)
+      echo sw.toString()
+      
       throw err
     } else {
       slackOk(pipeline, notifyMessage)
@@ -155,8 +160,13 @@ def runPR() {
       rootFsTestHandler(scmVars)
       chartLintHandler(scmVars)
       deployToTestHandler(scmVars)
-      helmTestHandler(scmVars)
-      destroyHandler(scmVars)
+      
+      try {
+        helmTestHandler(scmVars)
+      } finally {
+        destroyHandler(scmVars)
+      }
+      
       rootFsStageHandler(scmVars)
       deployToStageHandler(scmVars)
       stageTestHandler(scmVars)
@@ -706,7 +716,7 @@ def helmTestHandler(scmVars) {
     stage('Running helm tests') {
       for (chart in chartsToUpdate) {
         def commandString = """
-        helm test --tiller-namespace ${pipeline.helm.namespace} --timeout ${chart.timeout} ${chart.release}-${env.BUILD_ID}
+        helm test --cleanup --tiller-namespace ${pipeline.helm.namespace} --timeout ${chart.timeout} ${chart.release}-${env.BUILD_ID}
         """ 
 
         retry(chart.retries) {
