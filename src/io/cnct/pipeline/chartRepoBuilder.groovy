@@ -565,11 +565,19 @@ def chartProdHandler(scmVars) {
 
         // package chart, send it to registry
         parallelChartSteps["${chart.chart}-upload"] = {
-          sh("""
-            helm init --client-only
-            helm dependency update --debug charts/${chart.chart}
-            helm package --debug charts/${chart.chart}
-            curl --data-binary \"@${chart.chart}-${chartYaml.version}.tgz\" ${defaults.helm.registry}/api/charts""")
+          withCredentials(
+            [usernamePassword(
+              credentialsId: defaults.helm.credentials, 
+              usernameVariable: 'REGISTRY_USER',
+              passwordVariable: 'REGISTRY_PASSWORD')]) {
+              def registryUser = env.REGISTRY_USER
+              def registryPass = env.REGISTRY_PASSWORD
+              sh("""
+                helm init --client-only
+                helm dependency update --debug charts/${chart.chart}
+                helm package --debug charts/${chart.chart}
+                curl --data-binary \"@${chart.chart}-${chartYaml.version}.tgz\" https://${registryUser}:${registryPass}@${defaults.helm.registry}/api/charts""")
+          }
         }
       }
 
@@ -692,7 +700,7 @@ def deployToProdHandler(scmVars) {
           set +x
           helm init --client-only
           helm dependency update --debug charts/${chart.chart}
-          helm upgrade --install --tiller-namespace ${pipeline.helm.namespace} --repo ${defaults.helm.registry} --version ${chartYaml.version} --namespace ${defaults.prodNamespace} ${chart.release} ${chart.chart}""" 
+          helm upgrade --install --tiller-namespace ${pipeline.helm.namespace} --repo https://${defaults.helm.registry} --version ${chartYaml.version} --namespace ${defaults.prodNamespace} ${chart.release} ${chart.chart}""" 
           
           def setParams = envMapToSetParams(chart.prod.values)
           commandString += setParams
