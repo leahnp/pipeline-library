@@ -28,8 +28,8 @@ vault:
     key: "vault-client-key.pem"
     ca: "ca.pem"
 helm:
-  namespace: kube-system
-  registry: charts.pipeline.superior.cluster.cnct.io
+  namespace: prod
+  registry: charts.migrations.cnct.io
   credentials: chart-creds
 docker:
   registry: quay.io
