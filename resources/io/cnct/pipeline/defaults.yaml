@@ -9,7 +9,7 @@ timeout: 600
 versionfile: .versionfile
 shell: sh
 slack:
-  channel: #team-migrations
+  channel: #ping-github
   credentials: slack-access
   domain: "samsung-cnct"
 images: 
