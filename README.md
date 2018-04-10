@@ -107,7 +107,7 @@ Example:
 jenkinsNamespace: prod
 prodNamespace: prod
 stageNamespace: staging
-serviceAccount: jenkins-pipeline-jenkins
+serviceAccount: jenkins
 doDeploy: none
 retries: 1
 timeout: 600
