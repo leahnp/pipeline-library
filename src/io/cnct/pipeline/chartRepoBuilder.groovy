@@ -576,7 +576,7 @@ def chartProdHandler(scmVars) {
                 helm init --client-only
                 helm dependency update --debug charts/${chart.chart}
                 helm package --debug charts/${chart.chart}
-                curl -u \'${registryUser}:${registryPass}\' --data-binary \"@${chart.chart}-${chartYaml.version}.tgz\" https://${defaults.helm.registry}/api/charts""")
+                curl -u \\'${registryUser}:${registryPass}\\' --data-binary \"@${chart.chart}-${chartYaml.version}.tgz\" https://${defaults.helm.registry}/api/charts""")
           }
         }
       }
