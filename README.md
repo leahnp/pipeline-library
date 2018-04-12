@@ -124,7 +124,7 @@ images:
   vault: quay.io/maratoid/vault:latest
   script: quay.io/maratoid/script:latest
 vault:
-  server: https://vault-access.maratoid.svc.cluster.local
+  server: http://vault-access.maratoid.svc.cluster.local
   credentials: vault-plugin
   api: v1
   tls:
