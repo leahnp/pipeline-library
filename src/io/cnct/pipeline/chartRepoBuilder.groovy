@@ -934,7 +934,18 @@ def executeUserScript(stageText, scriptObj) {
   if (scriptObj) {
     stage(stageText) {
       container(containerName(scriptObj.image)) {
-        sh(readFile(scriptObj.script))
+
+        withEnv(
+          [
+            "PIPELINE_PROD_NAMESPACE=${defaults.prodNamespace}",
+            "PIPELINE_STAGE_NAMESPACE=${defaults.stageNamespace}",
+            "PIPELINE_BUILD_ID=${env.BUILD_ID}",
+            "PIPELINE_JOB_NAME=${env.JOB_NAME}",
+            "PIPELINE_BUILD_NUMBER=${env.BUILD_NUMBER}",
+            "PIPELINE_WORKSPACE=/home/jenkins"
+          ]) {
+          sh(readFile(scriptObj.script))
+        }
       }
     }
   }
