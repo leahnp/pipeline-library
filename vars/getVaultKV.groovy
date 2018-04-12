@@ -19,6 +19,6 @@ def parseJSON(String response, String secretVal) {
   } else if (result.data) {
       return result.data[secretVal]
   } else {
-    error "Can't retrieve secret ${secretVal}"
+    error "Can't retrieve secret ${path}/${secretVal}"
   }
 }
