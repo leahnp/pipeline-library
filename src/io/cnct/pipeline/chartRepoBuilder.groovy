@@ -220,7 +220,7 @@ def rootFsTestHandler(scmVars) {
   def useTag = makeDockerTag(defaults, gitCommit)
 
   for (component in pipeline.rootfs) {
-    def changed = isPathChange("rootfs/${component.context}")
+    def changed = isPathChange("rootfs/${component.context}", "${env.CHANGE_ID}")
     if (changed == 0) {
       
       // build steps
@@ -313,7 +313,7 @@ def rootFsStageHandler(scmVars) {
   def useTag = makeDockerTag(defaults, gitCommit)
 
   for (component in pipeline.rootfs) {
-    def changed = isPathChange("rootfs/${component.context}")
+    def changed = isPathChange("rootfs/${component.context}", "${env.CHANGE_ID}")
 
     if (changed == 0) {
       // tag steps
@@ -397,7 +397,7 @@ def rootFsProdHandler(scmVars) {
   // for later execution in parallel
   // Also memoize the rootfs objects, if they are connected to in-repo charts
   for (component in pipeline.rootfs) {
-    def changed = isPathChange("rootfs/${component.context}")
+    def changed = isPathChange("rootfs/${component.context}", "${env.CHANGE_ID}")
     if (changed == 0) {
       // build steps
       def buildCommandString = "docker build -t \
@@ -670,7 +670,7 @@ def deployToProdHandler(scmVars) {
   executeUserScript('Executing prod \'before\' script', pipeline.prod.beforeScript)
 
   def chartsToUpdate = collectUpdatedCharts() 
-  def versionfileChanged = isPathChange(defaults.versionfile)
+  def versionfileChanged = isPathChange(defaults.versionfile, "${env.CHANGE_ID}")
 
   container('helm') {
     def deploySteps = [:]
@@ -790,7 +790,7 @@ def collectUpdatedCharts () {
   }
 
   // change to version file means all charts changed
-  def versionfileChanged = isPathChange(defaults.versionfile)
+  def versionfileChanged = isPathChange(defaults.versionfile, "${env.CHANGE_ID}")
   if (versionfileChanged == 0) {
     for (config in pipeline.configs) {
       if (config.chart) {
@@ -799,7 +799,7 @@ def collectUpdatedCharts () {
     }
   } else {
     for (component in pipeline.rootfs) {
-      def changed = isPathChange("rootfs/${component.context}")
+      def changed = isPathChange("rootfs/${component.context}", "${env.CHANGE_ID}")
 
       if (changed == 0) {
         for (config in pipeline.configs) {
@@ -815,7 +815,7 @@ def collectUpdatedCharts () {
     // now check the charts code
     for (config in pipeline.configs) {
       if (config.chart) {
-        def changed = isPathChange("charts/${config.chart}")
+        def changed = isPathChange("charts/${config.chart}", "${env.CHANGE_ID}")
 
         if (changed == 0) {
           check(chartsToUpdate, config)
