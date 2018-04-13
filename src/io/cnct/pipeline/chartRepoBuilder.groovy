@@ -274,7 +274,7 @@ def rootFsTestHandler(scmVars) {
       for (modifiedChart in modifiedCharts) {
         def valuesYaml = parseYaml(readFile("${pwd()}/charts/${modifiedChart.chart}/values.yaml"))
 
-        mapValueByPath(modifiedChart.value, valuesYaml, "${defaults.docker.registry}/${defaults.docker.registry}/${modifiedChart.image}:${useTag}")
+        mapValueByPath(modifiedChart.value, valuesYaml, "${defaults.docker.registry}/${modifiedChart.image}:${useTag}")
         toYamlFile(valuesYaml, "${pwd()}/charts/${modifiedChart.chart}/values.yaml")
 
         stash(
