@@ -942,7 +942,7 @@ def executeUserScript(stageText, scriptObj) {
             "PIPELINE_BUILD_ID=${env.BUILD_ID}",
             "PIPELINE_JOB_NAME=${env.JOB_NAME}",
             "PIPELINE_BUILD_NUMBER=${env.BUILD_NUMBER}",
-            "PIPELINE_WORKSPACE=/home/jenkins"
+            "PIPELINE_WORKSPACE=${env.WORKSPACE}"
           ]) {
           sh(readFile(scriptObj.script))
         }
