@@ -274,7 +274,7 @@ def rootFsTestHandler(scmVars) {
       for (modifiedChart in modifiedCharts) {
         def valuesYaml = parseYaml(readFile("${pwd()}/charts/${modifiedChart.chart}/values.yaml"))
 
-        mapValueByPath(modifiedChart.value, valuesYaml, "${modifiedChart.image}:${useTag}")
+        mapValueByPath(modifiedChart.value, valuesYaml, "${defaults.docker.registry}/${defaults.docker.registry}/${modifiedChart.image}:${useTag}")
         toYamlFile(valuesYaml, "${pwd()}/charts/${modifiedChart.chart}/values.yaml")
 
         stash(
@@ -287,7 +287,7 @@ def rootFsTestHandler(scmVars) {
       for (unModifiedChart in unModifiedCharts) {
         def valuesYaml = parseYaml(readFile("${pwd()}/charts/${unModifiedChart.chart}/values.yaml"))
 
-        mapValueByPath(unModifiedChart.value, valuesYaml, "${unModifiedChart.image}:${defaults.docker.prodTag}")
+        mapValueByPath(unModifiedChart.value, valuesYaml, "${defaults.docker.registry}/${unModifiedChart.image}:${defaults.docker.prodTag}")
         toYamlFile(valuesYaml, "${pwd()}/charts/${unModifiedChart.chart}/values.yaml")
 
         stash(
@@ -354,7 +354,7 @@ def rootFsStageHandler(scmVars) {
       for (modifiedChart in modifiedCharts) {
         def valuesYaml = parseYaml(readFile("${pwd()}/charts/${modifiedChart.chart}/values.yaml"))
 
-        mapValueByPath(modifiedChart.value, valuesYaml, "${modifiedChart.image}:${useTag}")
+        mapValueByPath(modifiedChart.value, valuesYaml, "${defaults.docker.registry}/${modifiedChart.image}:${useTag}")
         toYamlFile(valuesYaml, "${pwd()}/charts/${modifiedChart.chart}/values.yaml")
 
         stash(
@@ -367,7 +367,7 @@ def rootFsStageHandler(scmVars) {
       for (unModifiedChart in unModifiedCharts) {
         def valuesYaml = parseYaml(readFile("${pwd()}/charts/${unModifiedChart.chart}/values.yaml"))
 
-        mapValueByPath(unModifiedChart.value, valuesYaml, "${unModifiedChart.image}:${defaults.docker.prodTag}")
+        mapValueByPath(unModifiedChart.value, valuesYaml, "${defaults.docker.registry}/${unModifiedChart.image}:${defaults.docker.prodTag}")
         toYamlFile(valuesYaml, "${pwd()}/charts/${unModifiedChart.chart}/values.yaml")
 
         stash(
@@ -446,7 +446,7 @@ def rootFsProdHandler(scmVars) {
       for (modifiedChart in modifiedCharts) {
         def valuesYaml = parseYaml(readFile("${pwd()}/charts/${modifiedChart.chart}/values.yaml"))
 
-        mapValueByPath(modifiedChart.value, valuesYaml, "${modifiedChart.image}:${useTag}")
+        mapValueByPath(modifiedChart.value, valuesYaml, "${defaults.docker.registry}/${modifiedChart.image}:${useTag}")
         toYamlFile(valuesYaml, "${pwd()}/charts/${modifiedChart.chart}/values.yaml")
 
         stash(
@@ -459,7 +459,7 @@ def rootFsProdHandler(scmVars) {
       for (unModifiedChart in unModifiedCharts) {
         def valuesYaml = parseYaml(readFile("${pwd()}/charts/${unModifiedChart.chart}/values.yaml"))
 
-        mapValueByPath(unModifiedChart.value, valuesYaml, "${unModifiedChart.image}:${defaults.docker.prodTag}")
+        mapValueByPath(unModifiedChart.value, valuesYaml, "${defaults.docker.registry}/${unModifiedChart.image}:${defaults.docker.prodTag}")
         toYamlFile(valuesYaml, "${pwd()}/charts/${unModifiedChart.chart}/values.yaml")
 
         stash(
