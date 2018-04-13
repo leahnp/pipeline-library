@@ -1,7 +1,7 @@
 #!/usr/bin/groovy
 def call(String path, String changeId = "null") { 
   def scriptVal = """
-git --no-pager diff --name-only origin/master origin/master^ | grep '${path}'
+git --no-pager diff --name-only HEAD HEAD^ | grep '${path}'
 exit \$?"""
 
   if (changeId != "null") {
