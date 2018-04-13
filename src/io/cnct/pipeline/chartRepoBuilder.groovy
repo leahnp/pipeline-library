@@ -413,8 +413,10 @@ def rootFsProdHandler(scmVars) {
       parallelTagSteps["${component.image.replaceAll('/','_')}-tag"] = { sh(tagCommandString) }
 
 
+      def pushShaCommandString = "docker push ${defaults.docker.registry}/${component.image}:${useTag}"
       def pushTagCommandString = "docker push ${defaults.docker.registry}/${component.image}:${defaults.docker.prodTag}"
       parallelPushSteps["${component.image.replaceAll('/','_')}-push-tag"] = { sh(pushTagCommandString) }
+      parallelPushSteps["${component.image.replaceAll('/','_')}-push-sha"] = { sh(pushShaCommandString) }
 
       if (component.chart) {
         modifiedCharts += component
