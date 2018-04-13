@@ -1,7 +1,10 @@
 #!/usr/bin/groovy
-def call(String path, String changeId = null) { 
-  def scriptVal = "git diff --name-only HEAD HEAD^"
-  if (changeId) {
+def call(String path, String changeId = "null") { 
+  def scriptVal = """
+git --no-pager diff --name-only origin/master origin/master^ | grep '${path}'
+exit \$?"""
+
+  if (changeId != "null") {
     scriptVal = """
 #!/usr/bin/env bash
 set -eo pipefail
