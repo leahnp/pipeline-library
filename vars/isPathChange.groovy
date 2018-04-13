@@ -1,8 +1,13 @@
 #!/usr/bin/groovy
 def call(String path, String changeId = "null") { 
   def scriptVal = """
-git --no-pager diff --name-only HEAD HEAD^ | grep '${path}'
-exit \$?"""
+if git show-ref HEAD; then
+  git --no-pager diff --name-only HEAD HEAD^ | grep '${path}'
+  exit \$?
+else
+  git ls-files | grep '${path}'
+  exit \$?
+fi"""
 
   if (changeId != "null") {
     scriptVal = """
