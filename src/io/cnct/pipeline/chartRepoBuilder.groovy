@@ -614,7 +614,7 @@ def deployToTestHandler(scmVars) {
         helm init --client-only
         helm dependency update --debug charts/${chart.chart}
         helm package --debug charts/${chart.chart}
-        helm install charts/${chart.chart} --tiller-namespace ${pipeline.helm.namespace} --namespace ${chart.release}-${env.BUILD_ID} --name ${chart.release}-${env.BUILD_ID}""" 
+        helm install charts/${chart.chart} --tiller-namespace ${pipeline.helm.namespace} --namespace ${kubeName(env.JOB_NAME)} --name ${chart.release}-${kubeName(env.JOB_NAME)}""" 
 
         
         def setParams = envMapToSetParams(chart.test.values)
@@ -726,7 +726,7 @@ def helmTestHandler(scmVars) {
     stage('Running helm tests') {
       for (chart in chartsToUpdate) {
         def commandString = """
-        helm test --cleanup --tiller-namespace ${pipeline.helm.namespace} --timeout ${chart.timeout} ${chart.release}-${env.BUILD_ID}
+        helm test --cleanup --tiller-namespace ${pipeline.helm.namespace} --timeout ${chart.timeout} ${chart.release}-${kubeName(env.JOB_NAME)}
         """ 
 
         retry(chart.retries) {
@@ -941,6 +941,7 @@ def executeUserScript(stageText, scriptObj) {
           [
             "PIPELINE_PROD_NAMESPACE=${defaults.prodNamespace}",
             "PIPELINE_STAGE_NAMESPACE=${defaults.stageNamespace}",
+            "PIPELINE_TEST_NAMESPACE=${kubeName(env.JOB_NAME)}"
             "PIPELINE_BUILD_ID=${env.BUILD_ID}",
             "PIPELINE_JOB_NAME=${env.JOB_NAME}",
             "PIPELINE_BUILD_NUMBER=${env.BUILD_NUMBER}",
