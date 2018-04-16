@@ -1,3 +1,3 @@
 def call(String name) {
-  return "${name.replaceAll('[^A-Za-z0-9]', '-')}-jenkins"
+  return "${name.toLowerCase().replaceAll('[^A-Za-z0-9]', '-')}-jenkins"
 }
