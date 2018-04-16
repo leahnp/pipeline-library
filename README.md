@@ -25,6 +25,7 @@
       - [stage](#stage)
       - [prod](#prod)
     - [Pipeline yaml example](#pipeline-yaml-example)
+  - [User scripts](#user-scripts)
   - [Pipeline flow](#pipeline-flow)
 
 <!-- /MarkdownTOC -->
@@ -201,7 +202,7 @@ Contents serve as a component or both docker tags and full [SemVer](https://semv
 
 ### pipeline.yaml
 
-Cofiguriation for each individual pipeline.  
+Cofiguration for each individual pipeline.  
 
 
 #### type
@@ -449,6 +450,12 @@ prod:
     script: scripts/prodAfter.sh 
   doDeploy: versionfile
 ```
+
+## User scripts
+
+Pipeline will preserve user script containers with the same image name for the lifetime of pipeline run.
+I.e. if you use `quay.io/myimage` for your global `beforeScript` and end up installing `kubectl` as a part of the script run,
+`kubectl` will still be available in the `afterScript` proivided you used the same `quay.io/myimage` image.
 
 ## Pipeline flow
 
