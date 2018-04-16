@@ -612,6 +612,7 @@ def deployToTestHandler(scmVars) {
         def commandString = """
         set +x
         helm init --client-only
+        helm repo add pipeline https://${defaults.helm.registry}
         helm dependency update --debug charts/${chart.chart}
         helm package --debug charts/${chart.chart}
         helm install charts/${chart.chart} --tiller-namespace ${pipeline.helm.namespace} --namespace ${kubeName(env.JOB_NAME)} --name ${chart.release}-${kubeName(env.JOB_NAME)}""" 
@@ -701,6 +702,7 @@ def deployToProdHandler(scmVars) {
           def commandString = """
           set +x
           helm init --client-only
+          helm repo add pipeline https://${defaults.helm.registry}
           helm dependency update --debug charts/${chart.chart}
           helm upgrade --install --tiller-namespace ${pipeline.helm.namespace} --repo https://${defaults.helm.registry} --version ${chartYaml.version} --namespace ${defaults.prodNamespace} ${chart.release} ${chart.chart}""" 
           
