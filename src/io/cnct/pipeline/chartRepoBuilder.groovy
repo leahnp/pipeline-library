@@ -791,9 +791,10 @@ def collectUpdatedCharts () {
     collection.add(item)
   }
 
-  // change to version file means all charts changed
+  // change to version file or pipeline.yaml means all charts changed
   def versionfileChanged = isPathChange(defaults.versionfile, "${env.CHANGE_ID}")
-  if (versionfileChanged == 0) {
+  def pipelineChanged = isPathChange('pipeline.yaml', "${env.CHANGE_ID}")
+  if (versionfileChanged == 0 || pipelineChanged == 0) {
     for (config in pipeline.configs) {
       if (config.chart) {
         check(chartsToUpdate, config)
