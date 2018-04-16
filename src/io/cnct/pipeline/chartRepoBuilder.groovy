@@ -941,7 +941,7 @@ def executeUserScript(stageText, scriptObj) {
           [
             "PIPELINE_PROD_NAMESPACE=${defaults.prodNamespace}",
             "PIPELINE_STAGE_NAMESPACE=${defaults.stageNamespace}",
-            "PIPELINE_TEST_NAMESPACE=${kubeName(env.JOB_NAME)}"
+            "PIPELINE_TEST_NAMESPACE=${kubeName(env.JOB_NAME)}",
             "PIPELINE_BUILD_ID=${env.BUILD_ID}",
             "PIPELINE_JOB_NAME=${env.JOB_NAME}",
             "PIPELINE_BUILD_NUMBER=${env.BUILD_NUMBER}",
