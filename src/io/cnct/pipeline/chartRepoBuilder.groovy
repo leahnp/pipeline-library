@@ -10,6 +10,7 @@ def executePipeline(pipelineDef) {
   pipelineEnvVariables = []
   pullSecrets = []
   defaults = parseYaml(libraryResource("io/cnct/pipeline/defaults.yaml"))
+  slackError = ""
 
   properties(
     [
@@ -38,12 +39,15 @@ def executePipeline(pipelineDef) {
     notifyMessage = 'Build succeeded for ' + "${env.JOB_NAME} number ${env.BUILD_NUMBER} (${env.RUN_DISPLAY_URL})"
   } catch (e) {
     currentBuild.result = 'FAILURE'
-    notifyMessage = 'Build failed for ' + "${env.JOB_NAME} number ${env.BUILD_NUMBER} (${env.RUN_DISPLAY_URL}) : ${e.getMessage()}"
+    notifyMessage = 'Build failed for ' + 
+      "${env.JOB_NAME} number ${env.BUILD_NUMBER} (${env.RUN_DISPLAY_URL}) : ${e.getMessage()}"
     err = e
   } finally {
     
     if (err) {
       slackFail(pipeline, notifyMessage)
+      
+      errorCleanup()
       
       def sw = new StringWriter()
       def pw = new PrintWriter(sw)
@@ -54,6 +58,37 @@ def executePipeline(pipelineDef) {
     } else {
       slackOk(pipeline, notifyMessage)
     } 
+  }
+}
+
+// try to cleanup any hanging helm release or namespaces resulting from premature termination
+// through either job ABORT or error
+def errorCleanup() {
+  if (isPRBuild || isSelfTest) {
+    withTools(
+      defaults: defaults,
+      envVars: pipelineEnvVariables,
+      containers: getScriptImages(),
+      imagePullSecrets: pullSecrets,
+      volumes: [secretVolume(secretName: pipeline.vault.tls.secret, mountPath: '/etc/vault/tls')]) {
+      inside(label: buildId('tools')) {
+        container('helm') {
+          stage('Cleaning up') {
+
+            def chartsToUpdate = collectUpdatedCharts()
+            def helmCleanSteps = [:] 
+
+            for (chart in chartsToUpdate) {
+              def commandString = "helm delete ${chart.release}-${kubeName(env.JOB_NAME)} --purge || true"
+              helmCleanSteps["${chart.chart}-deploy-test"] = { sh(commandString) }
+            }
+
+            parallel helmCleanSteps
+            sh("kubectl delete namespace ${kubeName(env.JOB_NAME)} || true")
+          }
+        }
+      }
+    }
   }
 }
 
