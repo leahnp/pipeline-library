@@ -6,6 +6,7 @@ def executePipeline(pipelineDef) {
   isChartChange = false
   isMasterBuild = false
   isPRBuild = false
+  isSelfTest = false
   pipeline = pipelineDef
   pipelineEnvVariables = []
   pullSecrets = []
