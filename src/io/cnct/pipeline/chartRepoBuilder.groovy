@@ -800,7 +800,7 @@ def destroyHandler(scmVars) {
       for (chart in chartsToUpdate) {
         def commandString = """
           helm delete ${chart.release}-${kubeName(env.JOB_NAME)} --purge --tiller-namespace ${pipeline.helm.namespace}
-          kubectl delete namespace ${chart.release}-${env.BUILD_ID}"""
+          kubectl delete namespace ${kubeName(env.JOB_NAME)}"""
 
         destroySteps["${chart.release}-${kubeName(env.JOB_NAME)}"] = { sh(commandString) }
       }
