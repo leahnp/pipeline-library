@@ -48,7 +48,7 @@ def executePipeline(pipelineDef) {
       slackFail(pipeline, notifyMessage)
       
       errorCleanup()
-      
+
       def sw = new StringWriter()
       def pw = new PrintWriter(sw)
       err.printStackTrace(pw)
@@ -85,6 +85,8 @@ def errorCleanup() {
 
             parallel helmCleanSteps
             sh("kubectl delete namespace ${kubeName(env.JOB_NAME)} || true")
+            sh("helm list --namespace ${kubeName(env.JOB_NAME)} --short --failed | while read line; do helm delete $line --purge; done")
+            sh("helm list --namespace ${defaults.stageNamespace} --short --failed | while read line; do helm delete $line --purge; done")
           }
         }
       }
@@ -689,7 +691,7 @@ def deployToStageHandler(scmVars) {
         set +x
         helm init --client-only
         helm dependency update --debug charts/${chart.chart}
-        helm upgrade --install --tiller-namespace ${pipeline.helm.namespace} --namespace ${defaults.stageNamespace} ${chart.release}-staging charts/${chart.chart}""" 
+        helm upgrade --install --tiller-namespace ${pipeline.helm.namespace} --namespace ${defaults.stageNamespace} ${chart.release}-${defaults.stageNamespace} charts/${chart.chart}""" 
         
         def setParams = envMapToSetParams(chart.stage.values)
         commandString += setParams
