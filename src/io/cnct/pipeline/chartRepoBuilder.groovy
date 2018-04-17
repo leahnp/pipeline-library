@@ -79,14 +79,14 @@ def errorCleanup() {
             def helmCleanSteps = [:] 
 
             for (chart in chartsToUpdate) {
-              def commandString = "helm delete ${chart.release}-${kubeName(env.JOB_NAME)} --purge || true"
+              def commandString = "helm delete ${chart.release}-${kubeName(env.JOB_NAME)} --purge --tiller-namespace ${pipeline.helm.namespace} || true"
               helmCleanSteps["${chart.chart}-deploy-test"] = { sh(commandString) }
             }
 
             parallel helmCleanSteps
             sh("kubectl delete namespace ${kubeName(env.JOB_NAME)} || true")
-            sh("helm list --namespace ${kubeName(env.JOB_NAME)} --short --failed | while read line; do helm delete $line --purge; done")
-            sh("helm list --namespace ${defaults.stageNamespace} --short --failed | while read line; do helm delete $line --purge; done")
+            sh("helm list --namespace ${kubeName(env.JOB_NAME)} --short --failed --tiller-namespace ${pipeline.helm.namespace} | while read line; do helm delete \$line --purge; done")
+            sh("helm list --namespace ${defaults.stageNamespace} --short --failed --tiller-namespace ${pipeline.helm.namespace} | while read line; do helm delete \$line --purge; done")
           }
         }
       }
@@ -799,10 +799,10 @@ def destroyHandler(scmVars) {
     stage('Cleaning up test') {
       for (chart in chartsToUpdate) {
         def commandString = """
-          helm delete ${chart.release}-${env.BUILD_ID} --purge --tiller-namespace ${pipeline.helm.namespace}
+          helm delete ${chart.release}-${kubeName(env.JOB_NAME)} --purge --tiller-namespace ${pipeline.helm.namespace}
           kubectl delete namespace ${chart.release}-${env.BUILD_ID}"""
 
-        destroySteps["${chart.release}-${env.BUILD_ID}"] = { sh(commandString) }
+        destroySteps["${chart.release}-${kubeName(env.JOB_NAME)}"] = { sh(commandString) }
       }
 
       parallel destroySteps
