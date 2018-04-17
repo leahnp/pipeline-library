@@ -27,6 +27,8 @@
     - [Pipeline yaml example](#pipeline-yaml-example)
   - [User scripts](#user-scripts)
   - [Pipeline flow](#pipeline-flow)
+  - [Common problems](#pipeline-flow)
+    - [Problems with chart labels](#problems-with-chart-labels)
 
 <!-- /MarkdownTOC -->
 
@@ -460,3 +462,13 @@ I.e. if you use `quay.io/myimage` for your global `beforeScript` and end up inst
 ## Pipeline flow
 
 ![pipeline flow](doc/pipeline.png)
+
+## Common problems
+
+### Problems with chart labels
+
+Pipeline versions charts with SemVer metadata added to the version and will result in version numbers like `0.0.7-prod.6+e0e090463683f08ba3813704330308fe1aae0f01`
+
+If your chart uses label values templated like `"chart: {{.Chart.Name }}-{{ .Chart.Version }}"` you will end up with a lable value that is invalid, due to the `+` character, or is too long.
+
+Use something like `chart: {{ printf "%s-%s" .Chart.Name .Chart.Version | replace "+" "_" | trunc 63 }}` instead.
