@@ -28,8 +28,10 @@ def execute() {
         }
 
         echo('Checking requirements')
-        if (!fileExists(defaults.versionfile)) {
-          error("Error: ${defaults.versionfile} must be present in repository root")
+        if (fileExists('charts')) {
+          if (!fileExists(defaults.versionfile)) {
+            error("Error: ${defaults.versionfile} must be present in repository root")
+          }
         }
       }
     }
