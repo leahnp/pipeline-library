@@ -353,7 +353,7 @@ def rootFsStageHandler(scmVars) {
 
   for (component in pipeline.rootfs) {
     def changed = isPathChange("rootfs/${component.context}", "${env.CHANGE_ID}")
-
+    changed = isPathChange("pipeline.yaml", "${env.CHANGE_ID}")
     if (changed == 0) {
       // tag steps
       def tagCommandString = "docker tag ${defaults.docker.registry}/${component.image}:${useTag} \
