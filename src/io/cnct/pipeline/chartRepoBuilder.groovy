@@ -85,8 +85,8 @@ def errorCleanup() {
 
             parallel helmCleanSteps
             sh("kubectl delete namespace ${kubeName(env.JOB_NAME)} || true")
-            sh("helm list --namespace ${kubeName(env.JOB_NAME)} --short --failed --tiller-namespace ${pipeline.helm.namespace} | while read line; do helm delete \$line --purge; done")
-            sh("helm list --namespace ${defaults.stageNamespace} --short --failed --tiller-namespace ${pipeline.helm.namespace} | while read line; do helm delete \$line --purge; done")
+            sh("helm list --namespace ${kubeName(env.JOB_NAME)} --short --failed --tiller-namespace ${pipeline.helm.namespace} | while read line; do helm delete \$line --purge --tiller-namespace ${pipeline.helm.namespace}; done")
+            sh("helm list --namespace ${defaults.stageNamespace} --short --failed --tiller-namespace ${pipeline.helm.namespace} | while read line; do helm delete \$line --purge --tiller-namespace ${pipeline.helm.namespace}; done")
           }
         }
       }
@@ -613,6 +613,7 @@ def chartProdHandler(scmVars) {
               def registryPass = env.REGISTRY_PASSWORD
               sh("""
                 helm init --client-only
+                helm repo add pipeline https://${defaults.helm.registry}
                 helm dependency update --debug charts/${chart.chart}
                 helm package --debug charts/${chart.chart}
                 curl -u ${registryUser}:${registryPass} --data-binary @${chart.chart}-${chartYaml.version}.tgz https://${defaults.helm.registry}/api/charts""")
