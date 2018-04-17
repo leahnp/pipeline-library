@@ -259,7 +259,10 @@ def rootFsTestHandler(scmVars) {
   for (component in pipeline.rootfs) {
     // check both rootfs path and pipeline.yaml
     def changed = isPathChange("rootfs/${component.context}", "${env.CHANGE_ID}")
-    changed = isPathChange("pipeline.yaml", "${env.CHANGE_ID}")
+    if (changed != 0) {
+      changed = isPathChange("pipeline.yaml", "${env.CHANGE_ID}")
+    }
+
     if (changed == 0) {
       
       // build steps
@@ -353,7 +356,10 @@ def rootFsStageHandler(scmVars) {
 
   for (component in pipeline.rootfs) {
     def changed = isPathChange("rootfs/${component.context}", "${env.CHANGE_ID}")
-    changed = isPathChange("pipeline.yaml", "${env.CHANGE_ID}")
+    if (changed != 0) {
+      changed = isPathChange("pipeline.yaml", "${env.CHANGE_ID}")
+    }
+
     if (changed == 0) {
       // tag steps
       def tagCommandString = "docker tag ${defaults.docker.registry}/${component.image}:${useTag} \
@@ -437,6 +443,10 @@ def rootFsProdHandler(scmVars) {
   // Also memoize the rootfs objects, if they are connected to in-repo charts
   for (component in pipeline.rootfs) {
     def changed = isPathChange("rootfs/${component.context}", "${env.CHANGE_ID}")
+    if (changed != 0) {
+      changed = isPathChange("pipeline.yaml", "${env.CHANGE_ID}")
+    }
+    
     if (changed == 0) {
       // build steps
       def buildCommandString = "docker build -t \
