@@ -257,7 +257,9 @@ def rootFsTestHandler(scmVars) {
   def useTag = makeDockerTag(defaults, gitCommit)
 
   for (component in pipeline.rootfs) {
+    // check both rootfs path and pipeline.yaml
     def changed = isPathChange("rootfs/${component.context}", "${env.CHANGE_ID}")
+    changed = isPathChange("pipeline.yaml", "${env.CHANGE_ID}")
     if (changed == 0) {
       
       // build steps
