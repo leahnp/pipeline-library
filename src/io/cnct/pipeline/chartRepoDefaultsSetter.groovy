@@ -146,6 +146,10 @@ def setDefaults(rawSettings, defaults) {
       config.test.values = [:]
     }
 
+    if (!config.test.tests) {
+      config.test.tests = []
+    }
+
     if (!config.stage) {
       config.stage = [:]
     }
