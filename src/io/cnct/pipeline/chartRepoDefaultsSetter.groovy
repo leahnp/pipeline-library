@@ -51,6 +51,20 @@ def setDefaults(rawSettings, defaults) {
     }
   }
 
+  // check helmRepos settings
+  if (!rawSettings.helmRepos) {
+    rawSettings.helmRepos = []
+  }
+  for (entry in rawSettings.helmRepos) {
+    if (!entry.name) {
+      error('All helm repositories must have a name')
+    }
+
+    if (!entry.url) {
+      error('All helm repositories must have a url')
+    }
+  }
+
   // check slack settings
   if (!rawSettings.slack) {
     rawSettings.slack = [:]

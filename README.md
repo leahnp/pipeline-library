@@ -15,6 +15,7 @@
       - [beforeScript](#beforescript)
       - [afterScript](#afterscript)
       - [envValues](#envvalues)
+      - [helmRepos](#helmrepos)
       - [slack](#slack)
       - [vault](#vault)
       - [helm](#helm)
@@ -248,9 +249,19 @@ envValues.[].envVar | Variable name
 envValues.[].value | Variable value
 envValues.[].secret | Path to Vault K/V value. I.e `kv-backend/kv-name/kv-value-name`
 
+#### helmRepos
+
+Helm repositories for requirements. `pipeline` is a reserved name and should not be used
+
+Setting | Description
+--- | ---
+helmRepos | Array of helm repository definitions
+helmRepos.[].name | Repository local name, e.g. `incubator`
+helmRepos.[].url | Repository URL, e.g. `https://kubernetes-charts-incubator.storage.googleapis.com`
+
 #### slack
 
-SLack notification info.
+Slack notification info.
 
 Setting | Description
 --- | ---
