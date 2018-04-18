@@ -201,7 +201,7 @@ def runPR() {
       try {
         deployToTestHandler(scmVars)
         helmTestHandler(scmVars)
-        testTestHandler
+        testTestHandler(scmVars)
       } finally {
         destroyHandler(scmVars)
       }

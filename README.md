@@ -26,6 +26,7 @@
       - [prod](#prod)
     - [Pipeline yaml example](#pipeline-yaml-example)
   - [User scripts](#user-scripts)
+    - [Environment variables](#environment-variables)
   - [Pipeline flow](#pipeline-flow)
   - [Common problems](#pipeline-flow)
     - [Problems with chart labels](#problems-with-chart-labels)
@@ -458,6 +459,20 @@ prod:
 Pipeline will preserve user script containers with the same image name for the lifetime of pipeline run.
 I.e. if you use `quay.io/myimage` for your global `beforeScript` and end up installing `kubectl` as a part of the script run,
 `kubectl` will still be available in the `afterScript` proivided you used the same `quay.io/myimage` image.
+
+### Environment variables
+
+The following environment variables are injected into all userscript containers:
+
+| Variable |  Purpose |  Example | 
+|---       |---       |---       |
+| PIPELINE_PROD_NAMESPACE | Production kubernetes namespace | `prod` |
+| PIPELINE_STAGE_NAMESPACE | Staging kubernetes namespace | `staging` |
+| PIPELINE_TEST_NAMESPACE | Ephemeral test kubernetes namespace | `test-pr-6-jenkins` |
+| PIPELINE_BUILD_ID | Jenkins build id | `1` |
+| PIPELINE_JOB_NAME | Jenksins job name | `test/PR-6` |
+| PIPELINE_BUILD_NUMBER | Jenksins build number | `1` |
+| PIPELINE_WORKSPACE | Path to Jenkins workspace in the container | `/home/jenkins/workspace/test_PR-6-U5VHDHDXSBXPPAUMV2CWOZMLZN63RMD3TNPQVTEDDUQI553ZSCRA` |
 
 ## Pipeline flow
 
