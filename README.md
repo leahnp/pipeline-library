@@ -499,7 +499,8 @@ Use something like `chart: {{ printf "%s-%s" .Chart.Name .Chart.Version | replac
 * Add a real chart version to `charts/your-chart-name/Chart.yaml`. Actual version number doesn't matter too much as you will set the base version in `.versionfile`
 * Move the `Dockerfile` and whatever otherfiles the docker build context will need from `github.com/samsung-cnct/your-project-container` to `rootfs/your-docker-image-name/`
 * Create `.versionfile` in the root of your repository. Put a real base version number in the file in `Major.Minor.Build` format.
-* Create pipeline.yaml file in the root of your repository. 
+* Make sure chart templates don't use `.Chart.Version` directly (see [Problems with chart labels](#problems-with-chart-labels))
+* Change `values.yaml` and chart if needed:
 
 Whatever values.yaml structure you have picked for your chart, there is only one requirement - the docker image and docker image tag need to be a single value. I.e., lets say you have the following section in your chart's `values.yaml`
 
@@ -524,6 +525,7 @@ config:
   other: value
 ```
 
+* Create pipeline.yaml file in the root of your repository. 
 * Fill out `pipeline.yaml`
 
 The important sections are:
