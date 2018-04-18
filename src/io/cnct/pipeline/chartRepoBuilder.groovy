@@ -259,20 +259,18 @@ def rootFsTestHandler(scmVars) {
 
   for (container in pipeline.rootfs) {
     // build steps
-    def buildCommandString = "docker build -t \
+    def buildCommandString = "docker build -t\
       ${defaults.docker.registry}/${container.image}:${useTag} --pull " 
     if (container.buildArgs) {
       buildCommandString += mapToParams('--build-arg', container.buildArgs)
     }
     buildCommandString += " rootfs/${container.context}"
 
-    echo "Build command string: ${buildCommandString}"
-
     parallelBuildSteps["${container.image.replaceAll('/','_')}-build"] = { sh(buildCommandString) }
 
 
     // tag steps
-    def tagCommandString = "docker tag ${defaults.docker.registry}/${container.image}:${useTag} \
+    def tagCommandString = "docker tag ${defaults.docker.registry}/${container.image}:${useTag}\
      ${defaults.docker.registry}/${container.image}:${defaults.docker.testTag}"
     parallelTagSteps["${container.image.replaceAll('/','_')}-tag"] = { sh(tagCommandString) }
 
