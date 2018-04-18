@@ -507,7 +507,7 @@ def chartLintHandler(scmVars) {
 
 // upload charts to helm registry
 def chartProdHandler(scmVars) {
-  def versionFileContents = readFile(defaults.versionfile)
+  def versionFileContents = readFile(defaults.versionfile).trim()
   def parallelChartSteps = [:] 
   
   container('helm') {
