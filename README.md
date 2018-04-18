@@ -30,6 +30,7 @@
   - [Pipeline flow](#pipeline-flow)
   - [Common problems](#pipeline-flow)
     - [Problems with chart labels](#problems-with-chart-labels)
+    - [Conversion from solas](#conversion-from-solas)
 
 <!-- /MarkdownTOC -->
 
@@ -487,3 +488,91 @@ Pipeline versions charts with SemVer metadata added to the version and will resu
 If your chart uses label values templated like `"chart: {{.Chart.Name }}-{{ .Chart.Version }}"` you will end up with a lable value that is invalid, due to the `+` character, or is too long.
 
 Use something like `chart: {{ printf "%s-%s" .Chart.Name .Chart.Version | replace "+" "_" | trunc 63 }}` instead.
+
+### Conversion from solas
+
+* Add a config for your gihub repository to `https://github.com/samsung-cnct/pipeline-jobs/tree/master/configs` and create a PR.
+* Make sure `Chart.yaml` is not in your `.gitignore` file
+* Create `rootfs/your-docker-image-name` and `charts/your-chart-name` folders in the rootof your git repo
+* Move all the chart files from `/your-chart-name` to `charts/your-chart-name`
+* Move `/build/Chart.yaml.in` to `charts/your-chart-name/Chart.yaml`
+* Add a real chart version to `charts/your-chart-name/Chart.yaml`. Actual version number doesn't matter too much as you will set the base version in `.versionfile`
+* Move the `Dockerfile` and whatever otherfiles the docker build context will need from `github.com/samsung-cnct/your-project-container` to `rootfs/your-docker-image-name/`
+* Create `.versionfile` in the root of your repository. Put a real base version number in the file in `Major.Minor.Build` format.
+* Create pipeline.yaml file in the root of your repository. 
+
+Whatever values.yaml structure you have picked for your chart, there is only one requirement - the docker image and docker image tag need to be a single value. I.e., lets say you have the following section in your chart's `values.yaml`
+
+```
+service: mychart
+images:
+  myimage: quay.io/samsung-cnct/my-image
+  mytag: 1.1.1
+  pullPolicy: Always
+config:
+  other: value
+```
+
+You will have to change your chart to work with:
+
+```
+service: mychart
+images:
+  myimage: quay.io/samsung-cnct/my-image:1.1.1
+  pullPolicy: Always
+config:
+  other: value
+```
+
+* Fill out `pipeline.yaml`
+
+The important sections are:
+
+```
+type: chart
+rootfs:
+  - image: samsung-cnct/my-image        # docker image name. DO NOT include the registry name (quay.io part)
+    context: your-docker-image-name     # folder containing the Dockerfile under ./rootfs
+    chart: your-chart-name              # folder containing the chart files under ./charts
+    value: images.myimage               # YAML path to the value referring to docker image name in your-chart-name values.yaml
+configs:
+  - chart: your-chart-name              # folder containing the chart files under ./charts 
+    release: your-helm-release-name     # name of the helm release for your-chart-name
+    test: 
+      values:
+        - key: config.other             # YAML path to the value referring to the value you want to override
+          value: override-value         # value to override with
+    stage: 
+      values:
+    ...
+    prod:
+      values:
+prod:
+  doDeploy: versionfile                 # set to 'versionfile' to deploy to prod when .versionfile changes. Set to 'auto' to continously deploy on every merged change. Set to 'none' to never deploy to prod
+```
+
+YAML path is simply a dot-path to a yaml value. For the following snippet:
+
+
+```
+service: mychart
+images:
+  myimage: quay.io/samsung-cnct/my-image:1.1.1
+  pullPolicy: Always
+config:
+  other: value
+```
+
+YAML path to `myimage` is `images.myimage`. YAML path to `other` is `config.other`.
+
+Value overrides translate to `--set` directives to `helm install` and `helm upgrade`. For the following snippet:
+
+```
+values:
+  - key: config.other 
+    value: override-value
+```
+
+pipeline will run `helm install ... --set config.other='override-value'`
+
+
