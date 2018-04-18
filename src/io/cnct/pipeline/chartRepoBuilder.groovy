@@ -453,7 +453,7 @@ def rootFsProdHandler(scmVars) {
 // under /charts folder
 def chartLintHandler(scmVars) { 
   def parallelLintSteps = [:]   
-  def versionFileContents = readFile(defaults.versionfile) 
+  def versionFileContents = readFile(defaults.versionfile).trim() 
 
   // read in all appropriate versionfiles and replace Chart.yaml versions 
   // this will verify that version files had helm-valid version numbers during linting step
