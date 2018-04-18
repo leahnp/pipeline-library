@@ -525,7 +525,7 @@ config:
   other: value
 ```
 
-* Create pipeline.yaml file in the root of your repository. 
+* Create `pipeline.yaml` file in the root of your repository. 
 * Fill out `pipeline.yaml`
 
 The important sections are:
