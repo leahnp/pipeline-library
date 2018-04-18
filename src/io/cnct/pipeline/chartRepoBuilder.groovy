@@ -265,7 +265,11 @@ def rootFsTestHandler(scmVars) {
       buildCommandString += mapToParams('--build-arg', container.buildArgs)
     }
     buildCommandString += " rootfs/${container.context}"
+
+    echo "Build command string: ${buildCommandString}"
+
     parallelBuildSteps["${container.image.replaceAll('/','_')}-build"] = { sh(buildCommandString) }
+
 
     // tag steps
     def tagCommandString = "docker tag ${defaults.docker.registry}/${container.image}:${useTag} \
