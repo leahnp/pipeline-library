@@ -551,12 +551,19 @@ def chartProdHandler(scmVars) {
                 passwordVariable: 'REGISTRY_PASSWORD')]) {
                 def registryUser = env.REGISTRY_USER
                 def registryPass = env.REGISTRY_PASSWORD
-                sh("""
-                  helm init --client-only
-                  helm repo add pipeline https://${defaults.helm.registry}
+                def helmCommand = """helm init --client-only
+                  helm repo add pipeline https://${defaults.helm.registry}"""
+
+                for (repo in pipeline.helmRepos) {
+                  helmCommand = "${helmCommand}\nhelm repo add ${repo.name} ${repo.url}"
+                }
+
+                helmCommand = """${helmCommand}
                   helm dependency update --debug charts/${chart.chart}
                   helm package --debug charts/${chart.chart}
-                  curl -u ${registryUser}:${registryPass} --data-binary @${chart.chart}-${chartYaml.version}.tgz https://${defaults.helm.registry}/api/charts""")
+                  curl -u ${registryUser}:${registryPass} --data-binary @${chart.chart}-${chartYaml.version}.tgz https://${defaults.helm.registry}/api/charts"""
+
+                sh(helmCommand)
             }
           }
         }
@@ -588,12 +595,18 @@ def deployToTestHandler(scmVars) {
 
           // deploy chart to the correct namespace
           def commandString = """
-          set +x
-          helm init --client-only
-          helm repo add pipeline https://${defaults.helm.registry}
+            set +x
+            helm init --client-only
+            helm repo add pipeline https://${defaults.helm.registry}"""
+
+          for (repo in pipeline.helmRepos) {
+            commandString = "${commandString}\nhelm repo add ${repo.name} ${repo.url}"
+          }
+
+          commandString = """${commandString}
           helm dependency update --debug charts/${chart.chart}
           helm package --debug charts/${chart.chart}
-          helm install charts/${chart.chart} --tiller-namespace ${pipeline.helm.namespace} --namespace ${kubeName(env.JOB_NAME)} --name ${chart.release}-${kubeName(env.JOB_NAME)}""" 
+          helm install charts/${chart.chart} --tiller-namespace ${pipeline.helm.namespace} --namespace ${kubeName(env.JOB_NAME)} --name ${chart.release}-${kubeName(env.JOB_NAME)} """
 
           
           def setParams = envMapToSetParams(chart.test.values)
@@ -678,12 +691,17 @@ def deployToProdHandler(scmVars) {
 
           // deploy chart to the correct namespace
           if (doDeploy) {
-            def commandString = """
-            set +x
-            helm init --client-only
-            helm repo add pipeline https://${defaults.helm.registry}
+            def commandString = """set +x
+              helm init --client-only
+              helm repo add pipeline https://${defaults.helm.registry}"""
+
+            for (repo in pipeline.helmRepos) {
+              commandString = "${commandString}\nhelm repo add ${repo.name} ${repo.url}"
+            }
+
+            commandString = """${commandString}
             helm dependency update --debug charts/${chart.chart}
-            helm upgrade --install --tiller-namespace ${pipeline.helm.namespace} --repo https://${defaults.helm.registry} --version ${chartYaml.version} --namespace ${defaults.prodNamespace} ${chart.release} ${chart.chart}""" 
+            helm upgrade --install --tiller-namespace ${pipeline.helm.namespace} --repo https://${defaults.helm.registry} --version ${chartYaml.version} --namespace ${defaults.prodNamespace} ${chart.release} ${chart.chart} """
             
             def setParams = envMapToSetParams(chart.prod.values)
             commandString += setParams
