@@ -96,6 +96,7 @@ def errorCleanup() {
 }
 
 def initializeHandler() {
+  def scmVars
   for (pull in pipeline.pullSecrets ) {
     pullSecrets += pull.name
   }
@@ -113,6 +114,7 @@ def initializeHandler() {
     defaults: defaults,
     volumes: [secretVolume(secretName: pipeline.vault.tls.secret, mountPath: '/etc/vault/tls')]) {
     inside(label: buildId('tools')) {
+      scmVars = checkout scm
       container('helm') {
         stage('Create image pull secrets') {
           for (pull in pipeline.pullSecrets ) {
@@ -143,7 +145,7 @@ def initializeHandler() {
       }
 
       container('vault') {
-        stage('Set global environment variables') {
+        stage('Set global environment variables') {          
           for (envValue in pipeline.envValues ) {
             if (envValue.secret) {
               withCredentials([string(credentialsId: defaults.vault.credentials, variable: 'VAULT_TOKEN')]) {
@@ -157,6 +159,18 @@ def initializeHandler() {
                   key: envValue.envVar, 
                   value: secretVal)
               }
+            } else if (envValue.env) {
+              
+              def valueFromEnv = ""
+              if (env[envValue.env]) {
+                valueFromEnv = env[envValue.env]
+              } else {
+                valueFromEnv = scmVars[envValue.env]
+              }
+
+              pipelineEnvVariables += envVar(
+                  key: envValue.envVar, 
+                  value: valueFromEnv)  
             } else {
               pipelineEnvVariables += envVar(
                 key: envValue.envVar, 
@@ -262,7 +276,35 @@ def rootFsTestHandler(scmVars) {
     def buildCommandString = "docker build -t\
       ${defaults.docker.registry}/${container.image}:${useTag} --pull " 
     if (container.buildArgs) {
-      buildCommandString += mapToParams('--build-arg', container.buildArgs)
+      def argMap = [:]
+
+      for (buildArg in container.buildArgs) {
+        if (buildArg.secret) {
+          withCredentials([string(credentialsId: defaults.vault.credentials, variable: 'VAULT_TOKEN')]) {
+            def vaultToken = env.VAULT_TOKEN
+            def secretVal = getVaultKV(
+              defaults,
+              vaultToken,
+              buildArg.secret.tokenize('/').init().join('/'), 
+              buildArg.secret.tokenize('/').last())
+            argMap += ["${buildArg.arg}" : "${secretVal.trim()}"]
+          }
+        } else if (buildArg.env) {
+          
+          def valueFromEnv = ""
+          if (env[buildArg.env]) {
+            valueFromEnv = env[buildArg.env]
+          } else {
+            valueFromEnv = scmVars[buildArg.env]
+          }
+
+          argMap += ["${buildArg.arg}" : "${valueFromEnv.trim()}"]  
+        } else {
+          argMap += ["${buildArg.arg}" : "${buildArg.value.trim()}"]
+        }
+      }
+
+      buildCommandString += mapToParams('--build-arg', argMap)
     }
     buildCommandString += " rootfs/${container.context}"
 
@@ -725,11 +767,22 @@ def helmTestHandler(scmVars) {
       for (chart in pipeline.configs) {
         if (chart.chart) {
           def commandString = """
-          helm test --cleanup --tiller-namespace ${pipeline.helm.namespace} --timeout ${chart.timeout} ${chart.release}-${kubeName(env.JOB_NAME)}
+          helm test --tiller-namespace ${pipeline.helm.namespace} --timeout ${chart.timeout} ${chart.release}-${kubeName(env.JOB_NAME)}
           """ 
 
           retry(chart.retries) {
-            sh(commandString)
+            try {
+              sh(commandString)
+            } finally {
+              def logString = "kubectl get pods --namespace ${kubeName(env.JOB_NAME)} -o go-template\
+                  --template='{{range .items}}{{\$name := .metadata.name}}{{range \$key,\
+                  \$value := .metadata.annotations}}{{\$name}} {{\$key}}:{{\$value}}+{{end}}{{end}}'\
+                  | tr '+' '\\n' | grep -e helm.sh/hook:.*test-success -e helm.sh/hook:.*test-failure |\
+                  cut -d' ' -f1 | while read line;\
+                  do kubectl logs \$line --namespace ${kubeName(env.JOB_NAME)};\
+                  kubectl delete pod \$line --namespace ${kubeName(env.JOB_NAME)}; done"
+              sh(logString)
+            }
           }
         }
       }
