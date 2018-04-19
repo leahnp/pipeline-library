@@ -439,7 +439,35 @@ def rootFsProdHandler(scmVars) {
     def buildCommandString = "docker build -t \
       ${defaults.docker.registry}/${container.image}:${useTag} --pull " 
     if (container.buildArgs) {
-      buildCommandString += mapToParams('--build-arg', container.buildArgs)
+      def argMap = [:]
+
+      for (buildArg in container.buildArgs) {
+        if (buildArg.secret) {
+          withCredentials([string(credentialsId: defaults.vault.credentials, variable: 'VAULT_TOKEN')]) {
+            def vaultToken = env.VAULT_TOKEN
+            def secretVal = getVaultKV(
+              defaults,
+              vaultToken,
+              buildArg.secret.tokenize('/').init().join('/'), 
+              buildArg.secret.tokenize('/').last())
+            argMap += ["${buildArg.arg}" : "${secretVal.trim()}"]
+          }
+        } else if (buildArg.env) {
+          
+          def valueFromEnv = ""
+          if (env[buildArg.env]) {
+            valueFromEnv = env[buildArg.env]
+          } else {
+            valueFromEnv = scmVars[buildArg.env]
+          }
+
+          argMap += ["${buildArg.arg}" : "${valueFromEnv.trim()}"]  
+        } else {
+          argMap += ["${buildArg.arg}" : "${buildArg.value.trim()}"]
+        }
+      }
+      
+      buildCommandString += mapToParams('--build-arg', argMap)
     }
     buildCommandString += " rootfs/${container.context}"
     parallelBuildSteps["${container.image.replaceAll('/','_')}-build"] = { sh(buildCommandString) }
