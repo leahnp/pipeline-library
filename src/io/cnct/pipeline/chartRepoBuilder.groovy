@@ -44,11 +44,11 @@ def executePipeline(pipelineDef) {
       "${env.JOB_NAME} number ${env.BUILD_NUMBER} (${env.RUN_DISPLAY_URL}) : ${e.getMessage()}"
     err = e
   } finally {
+
+    postCleanup(err)
     
     if (err) {
       slackFail(pipeline, notifyMessage)
-      
-      errorCleanup()
 
       def sw = new StringWriter()
       def pw = new PrintWriter(sw)
@@ -64,30 +64,44 @@ def executePipeline(pipelineDef) {
 
 // try to cleanup any hanging helm release or namespaces resulting from premature termination
 // through either job ABORT or error
-def errorCleanup() {
-  if (isPRBuild || isSelfTest) {
-    withTools(
-      defaults: defaults,
-      envVars: pipelineEnvVariables,
-      containers: getScriptImages(),
-      imagePullSecrets: pullSecrets,
-      volumes: [secretVolume(secretName: pipeline.vault.tls.secret, mountPath: '/etc/vault/tls')]) {
-      inside(label: buildId('tools')) {
-        container('helm') {
-          stage('Cleaning up') {
-            def helmCleanSteps = [:] 
+def postCleanup(err) {
+  withTools(
+    defaults: defaults,
+    envVars: pipelineEnvVariables,
+    containers: getScriptImages(),
+    imagePullSecrets: pullSecrets,
+    volumes: [secretVolume(secretName: pipeline.vault.tls.secret, mountPath: '/etc/vault/tls')]) {
+    inside(label: buildId('tools')) {
+      container('helm') {
+        stage('Cleaning up') {
 
-            for (chart in pipeline.configs) {
-              if (chart.chart) {
-                def commandString = "helm delete ${chart.release}-${kubeName(env.JOB_NAME)} --purge --tiller-namespace ${pipeline.helm.namespace} || true"
-                helmCleanSteps["${chart.chart}-deploy-test"] = { sh(commandString) }
-              }
-            }
+          // always cleanup workspace pvc
+          sh("kubectl delete pvc jenkins-workspace-${kubeName(env.JOB_NAME)} --namespace ${defaults.prodNamespace} || true")
 
-            parallel helmCleanSteps
-            sh("kubectl delete namespace ${kubeName(env.JOB_NAME)} || true")
+          if (isPRBuild || isSelfTest) {
+
+            // clean up failed releases if present
             sh("helm list --namespace ${kubeName(env.JOB_NAME)} --short --failed --tiller-namespace ${pipeline.helm.namespace} | while read line; do helm delete \$line --purge --tiller-namespace ${pipeline.helm.namespace}; done")
             sh("helm list --namespace ${defaults.stageNamespace} --short --failed --tiller-namespace ${pipeline.helm.namespace} | while read line; do helm delete \$line --purge --tiller-namespace ${pipeline.helm.namespace}; done")
+
+            // additional cleanup on error that destroy handler might have missed
+            if (err) {
+              def helmCleanSteps = [:] 
+
+              for (chart in pipeline.configs) {
+                if (chart.chart) {
+                  def commandString = "helm delete ${chart.release}-${kubeName(env.JOB_NAME)} --purge --tiller-namespace ${pipeline.helm.namespace} || true"
+                  helmCleanSteps["${chart.chart}-deploy-test"] = { sh(commandString) }
+                }
+              }
+
+              echo("Contents of ${kubeName(env.JOB_NAME)} namespace:")
+              sh("kubectl describe all --namespace ${kubeName(env.JOB_NAME)} || true")
+
+              parallel helmCleanSteps
+
+              sh("kubectl delete namespace ${kubeName(env.JOB_NAME)} || true")
+            }
           }
         }
       }
@@ -96,6 +110,7 @@ def errorCleanup() {
 }
 
 def initializeHandler() {
+  def scmVars
   for (pull in pipeline.pullSecrets ) {
     pullSecrets += pull.name
   }
@@ -113,7 +128,23 @@ def initializeHandler() {
     defaults: defaults,
     volumes: [secretVolume(secretName: pipeline.vault.tls.secret, mountPath: '/etc/vault/tls')]) {
     inside(label: buildId('tools')) {
+      
+      // cleanup workspace
+      deleteDir()
+      
+      scmVars = checkout scm
       container('helm') {
+        stage('Create workspace pvc') {
+          echo('Loading pipeline worskspace pvc template')
+          def workspaceInfo = parseYaml(libraryResource("io/cnct/pipeline/workspace-pvc.yaml"))
+          workspaceInfo.metadata.name = "jenkins-workspace-${kubeName(env.JOB_NAME)}".toString()
+          toYamlFile(workspaceInfo, "${pwd()}/jenkins-workspace-${kubeName(env.JOB_NAME)}.yaml")
+
+          echo('creating workspace pvc')
+          sh("cat ${pwd()}/jenkins-workspace-${kubeName(env.JOB_NAME)}.yaml")
+          sh("kubectl create -f ${pwd()}/jenkins-workspace-${kubeName(env.JOB_NAME)}.yaml --namespace ${defaults.prodNamespace}")
+        }
+
         stage('Create image pull secrets') {
           for (pull in pipeline.pullSecrets ) {
             withCredentials([string(credentialsId: defaults.vault.credentials, variable: 'VAULT_TOKEN')]) {
@@ -143,7 +174,7 @@ def initializeHandler() {
       }
 
       container('vault') {
-        stage('Set global environment variables') {
+        stage('Set global environment variables') {          
           for (envValue in pipeline.envValues ) {
             if (envValue.secret) {
               withCredentials([string(credentialsId: defaults.vault.credentials, variable: 'VAULT_TOKEN')]) {
@@ -157,6 +188,18 @@ def initializeHandler() {
                   key: envValue.envVar, 
                   value: secretVal)
               }
+            } else if (envValue.env) {
+              
+              def valueFromEnv = ""
+              if (env[envValue.env]) {
+                valueFromEnv = env[envValue.env]
+              } else {
+                valueFromEnv = scmVars[envValue.env]
+              }
+
+              pipelineEnvVariables += envVar(
+                  key: envValue.envVar, 
+                  value: valueFromEnv)  
             } else {
               pipelineEnvVariables += envVar(
                 key: envValue.envVar, 
@@ -184,6 +227,7 @@ def runPR() {
     envVars: pipelineEnvVariables,
     containers: getScriptImages(),
     imagePullSecrets: pullSecrets,
+    workspaceClaimName: "jenkins-workspace-${kubeName(env.JOB_NAME)}",
     volumes: [secretVolume(secretName: pipeline.vault.tls.secret, mountPath: '/etc/vault/tls')]) {       
     
     inside(label: buildId('tools')) {
@@ -198,13 +242,10 @@ def runPR() {
       rootFsTestHandler(scmVars)
       chartLintHandler(scmVars)
 
-      try {
-        deployToTestHandler(scmVars)
-        helmTestHandler(scmVars)
-        testTestHandler(scmVars)
-      } finally {
-        destroyHandler(scmVars)
-      }
+      deployToTestHandler(scmVars)
+      helmTestHandler(scmVars)
+      testTestHandler(scmVars)
+      destroyHandler(scmVars)
       
       rootFsStageHandler(scmVars)
       deployToStageHandler(scmVars)
@@ -220,9 +261,10 @@ def runMerge() {
   def scmVars
   withTools(
     defaults: defaults,
-    containers: getScriptImages(),
     envVars: pipelineEnvVariables,
+    containers: getScriptImages(),
     imagePullSecrets: pullSecrets,
+    workspaceClaimName: "jenkins-workspace-${kubeName(env.JOB_NAME)}",
     volumes: [secretVolume(secretName: pipeline.vault.tls.secret, mountPath: '/etc/vault/tls')]) {
     inside(label: buildId('tools')) {
       stage('Checkout') {
@@ -262,9 +304,37 @@ def rootFsTestHandler(scmVars) {
     def buildCommandString = "docker build -t\
       ${defaults.docker.registry}/${container.image}:${useTag} --pull " 
     if (container.buildArgs) {
-      buildCommandString += mapToParams('--build-arg', container.buildArgs)
+      def argMap = [:]
+
+      for (buildArg in container.buildArgs) {
+        if (buildArg.secret) {
+          withCredentials([string(credentialsId: defaults.vault.credentials, variable: 'VAULT_TOKEN')]) {
+            def vaultToken = env.VAULT_TOKEN
+            def secretVal = getVaultKV(
+              defaults,
+              vaultToken,
+              buildArg.secret.tokenize('/').init().join('/'), 
+              buildArg.secret.tokenize('/').last())
+            argMap += ["${buildArg.arg}" : "${secretVal.trim()}"]
+          }
+        } else if (buildArg.env) {
+          
+          def valueFromEnv = ""
+          if (env[buildArg.env]) {
+            valueFromEnv = env[buildArg.env]
+          } else {
+            valueFromEnv = scmVars[buildArg.env]
+          }
+
+          argMap += ["${buildArg.arg}" : "${valueFromEnv.trim()}"]  
+        } else {
+          argMap += ["${buildArg.arg}" : "${buildArg.value.trim()}"]
+        }
+      }
+
+      buildCommandString += mapToParams('--build-arg', argMap)
     }
-    buildCommandString += " rootfs/${container.context}"
+    buildCommandString += " ${container.dockerContext} --file rootfs/${container.context}/Dockerfile"
 
     parallelBuildSteps["${container.image.replaceAll('/','_')}-build"] = { sh(buildCommandString) }
 
@@ -397,9 +467,37 @@ def rootFsProdHandler(scmVars) {
     def buildCommandString = "docker build -t \
       ${defaults.docker.registry}/${container.image}:${useTag} --pull " 
     if (container.buildArgs) {
-      buildCommandString += mapToParams('--build-arg', container.buildArgs)
+      def argMap = [:]
+
+      for (buildArg in container.buildArgs) {
+        if (buildArg.secret) {
+          withCredentials([string(credentialsId: defaults.vault.credentials, variable: 'VAULT_TOKEN')]) {
+            def vaultToken = env.VAULT_TOKEN
+            def secretVal = getVaultKV(
+              defaults,
+              vaultToken,
+              buildArg.secret.tokenize('/').init().join('/'), 
+              buildArg.secret.tokenize('/').last())
+            argMap += ["${buildArg.arg}" : "${secretVal.trim()}"]
+          }
+        } else if (buildArg.env) {
+          
+          def valueFromEnv = ""
+          if (env[buildArg.env]) {
+            valueFromEnv = env[buildArg.env]
+          } else {
+            valueFromEnv = scmVars[buildArg.env]
+          }
+
+          argMap += ["${buildArg.arg}" : "${valueFromEnv.trim()}"]  
+        } else {
+          argMap += ["${buildArg.arg}" : "${buildArg.value.trim()}"]
+        }
+      }
+      
+      buildCommandString += mapToParams('--build-arg', argMap)
     }
-    buildCommandString += " rootfs/${container.context}"
+    buildCommandString += " ${container.dockerContext} --file rootfs/${container.context}/Dockerfile"
     parallelBuildSteps["${container.image.replaceAll('/','_')}-build"] = { sh(buildCommandString) }
 
     def tagCommandString = "docker tag ${defaults.docker.registry}/${container.image}:${useTag} \
@@ -629,32 +727,34 @@ def deployToTestHandler(scmVars) {
 def deployToStageHandler(scmVars) { 
   executeUserScript('Executing stage \'before\' script', pipeline.stage.beforeScript)
   
-  container('helm') {
-    stage('Deploying to stage namespace') {
-      def deploySteps = [:]
-      for (chart in pipeline.configs) {
-        if (chart.chart) {
-          // unstash chart yaml if applicable
-          unstashCheck("${chart.chart}-chartyaml-${env.BUILD_ID}".replaceAll('-','_'))
+  if (pipeline.stage.deploy) {
+    container('helm') {
+      stage('Deploying to stage namespace') {
+        def deploySteps = [:]
+        for (chart in pipeline.configs) {
+          if (chart.chart) {
+            // unstash chart yaml if applicable
+            unstashCheck("${chart.chart}-chartyaml-${env.BUILD_ID}".replaceAll('-','_'))
 
-          // unstash values changes if applicable
-          unstashCheck("${chart.chart}-values-${env.BUILD_ID}".replaceAll('-','_'))
+            // unstash values changes if applicable
+            unstashCheck("${chart.chart}-values-${env.BUILD_ID}".replaceAll('-','_'))
 
-          // deploy chart to the correct namespace
-          def commandString = """
-          set +x
-          helm init --client-only
-          helm dependency update --debug charts/${chart.chart}
-          helm upgrade --install --tiller-namespace ${pipeline.helm.namespace} --namespace ${defaults.stageNamespace} ${chart.release}-${defaults.stageNamespace} charts/${chart.chart}""" 
-          
-          def setParams = envMapToSetParams(chart.stage.values)
-          commandString += setParams
+            // deploy chart to the correct namespace
+            def commandString = """
+            set +x
+            helm init --client-only
+            helm dependency update --debug charts/${chart.chart}
+            helm upgrade --install --tiller-namespace ${pipeline.helm.namespace} --namespace ${defaults.stageNamespace} ${chart.release}-${defaults.stageNamespace} charts/${chart.chart}""" 
+            
+            def setParams = envMapToSetParams(chart.stage.values)
+            commandString += setParams
 
-          deploySteps["${chart.chart}-deploy-stage"] = { sh(commandString) }
+            deploySteps["${chart.chart}-deploy-stage"] = { sh(commandString) }
+          }
         }
-      }
 
-      parallel deploySteps              
+        parallel deploySteps              
+      }
     }
   }
 }
@@ -725,11 +825,22 @@ def helmTestHandler(scmVars) {
       for (chart in pipeline.configs) {
         if (chart.chart) {
           def commandString = """
-          helm test --cleanup --tiller-namespace ${pipeline.helm.namespace} --timeout ${chart.timeout} ${chart.release}-${kubeName(env.JOB_NAME)}
+          helm test --tiller-namespace ${pipeline.helm.namespace} --timeout ${chart.timeout} ${chart.release}-${kubeName(env.JOB_NAME)}
           """ 
 
           retry(chart.retries) {
-            sh(commandString)
+            try {
+              sh(commandString)
+            } finally {
+              def logString = "kubectl get pods --namespace ${kubeName(env.JOB_NAME)} -o go-template\
+                  --template='{{range .items}}{{\$name := .metadata.name}}{{range \$key,\
+                  \$value := .metadata.annotations}}{{\$name}} {{\$key}}:{{\$value}}+{{end}}{{end}}'\
+                  | tr '+' '\\n' | grep -e helm.sh/hook:.*test-success -e helm.sh/hook:.*test-failure |\
+                  cut -d' ' -f1 | while read line;\
+                  do kubectl logs \$line --namespace ${kubeName(env.JOB_NAME)};\
+                  kubectl delete pod \$line --namespace ${kubeName(env.JOB_NAME)}; done"
+              sh(logString)
+            }
           }
         }
       }
@@ -743,7 +854,7 @@ def testTestHandler(scmVars) {
   for (config in pipeline.configs) {
     if (config.test.tests) {
       for (test in config.test.tests) {
-        executeUserScript('Executing staging test scripts', test)
+        executeUserScript('Executing test test scripts', test)
       }
     }
   }
@@ -771,17 +882,20 @@ def destroyHandler(scmVars) {
 
   container('helm') {
     stage('Cleaning up test') {
+      
+      echo("Contents of ${kubeName(env.JOB_NAME)} namespace:")
+      sh("kubectl describe all --namespace ${kubeName(env.JOB_NAME)}")
+      
       for (chart in pipeline.configs) {
         if (chart.chart) {
-          def commandString = """
-            helm delete ${chart.release}-${kubeName(env.JOB_NAME)} --purge --tiller-namespace ${pipeline.helm.namespace}
-            kubectl delete namespace ${kubeName(env.JOB_NAME)}"""
-
+          def commandString = "helm delete ${chart.release}-${kubeName(env.JOB_NAME)} --purge --tiller-namespace ${pipeline.helm.namespace}"
           destroySteps["${chart.release}-${kubeName(env.JOB_NAME)}"] = { sh(commandString) }
         }
       }
 
       parallel destroySteps
+
+      sh("kubectl delete namespace ${kubeName(env.JOB_NAME)}")
     }
   }
 
@@ -827,17 +941,18 @@ def getScriptImages() {
     collection.add(item)
   }
 
+  if (pipeline.beforeScript) {
+    check(scriptContainers, [name: containerName(pipeline.beforeScript.image),
+      image: pipeline.beforeScript.image,
+      shell: pipeline.beforeScript.shell])
+  }
+  if (pipeline.afterScript) {
+    check(scriptContainers, [name: containerName(pipeline.afterScript.image),
+      image: pipeline.afterScript.image,
+      shell: pipeline.afterScript.shell])
+  }
+
   if (isPRBuild || isSelfTest) {
-    if (pipeline.beforeScript) {
-      check(scriptContainers, [name: containerName(pipeline.beforeScript.image),
-        image: pipeline.beforeScript.image,
-        shell: pipeline.beforeScript.shell])
-    }
-    if (pipeline.afterScript) {
-      check(scriptContainers, [name: containerName(pipeline.afterScript.image),
-        image: pipeline.afterScript.image,
-        shell: pipeline.afterScript.shell])
-    }
     if (pipeline.test.afterScript) {
       check(scriptContainers, [name: containerName(pipeline.test.afterScript.image),
         image: pipeline.test.afterScript.image,
@@ -860,6 +975,12 @@ def getScriptImages() {
     }
 
     for (config in pipeline.configs) {
+      for (test in config.test.tests) {
+        check(scriptContainers, [name: containerName(test.image),
+          image: test.image,
+          shell: test.shell])
+      }
+
       for (test in config.stage.tests) {
         check(scriptContainers, [name: containerName(test.image),
           image: test.image,

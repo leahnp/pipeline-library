@@ -122,8 +122,22 @@ def setDefaults(rawSettings, defaults) {
       error("rootfs items must have 'context' field")
     }
 
+    if (!entry.dockerContext) {
+      entry.dockerContext = "./rootfs/${entry.context}"
+    }
+
     if (!entry.image) {
       error("rootfs items must have 'image' field")
+    }
+
+    if (!entry.buildArgs) {
+      entry.buildArgs = []
+    }
+
+    for (arg in entry.buildArgs) {
+      if (!arg.arg) {
+        error("Each rootfs buildArg items must have 'arg' field")
+      }
     }
 
     if (entry.test) {
@@ -221,6 +235,9 @@ def setDefaults(rawSettings, defaults) {
   // check staging
   if (!rawSettings.stage) {
     rawSettings.stage = [:]
+  }
+  if (!rawSettings.stage.deploy) {
+    rawSettings.stage.deploy = false
   }
   if (rawSettings.stage.beforeScript) {
     rawSettings.stage.beforeScript.image = 

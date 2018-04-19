@@ -17,6 +17,25 @@ def call(Map parameters = [:], body) {
   def volumes = parameters.get('volumes', [])
   def containersParam = parameters.get('containers', [])
   def containerTemplates = []
+  def pvcWorkspaceName = parameters.get('workspaceClaimName', null)
+
+  def podYaml = ""
+  def workspaceVolume = emptyDirWorkspaceVolume(memory: false)
+  if (pvcWorkspaceName) {
+    podYaml = """
+apiVersion: v1
+kind: Pod
+spec:
+  initContainers:
+  - name: init-workspace
+    image: busybox
+    command: ['sh', '-c', 'chmod -R 777 /home/jenkins']
+    volumeMounts:
+    - mountPath: /home/jenkins
+      name: workspace-volume"""
+
+    workspaceVolume = persistentVolumeClaimWorkspaceVolume(claimName: pvcWorkspaceName, readOnly: false)
+  }
 
   envVars.add(containerEnvVar(key: 'DOCKER_HOST', value: 'localhost:2375'))
   volumes.add(emptyDirVolume(mountPath: '/var/lib/docker', memory: false))
@@ -77,8 +96,10 @@ def call(Map parameters = [:], body) {
   podTemplate(name: "${name}", label: label, inheritFrom: "${inheritFrom}", serviceAccount: "${serviceAccount}",
         idleMinutesStr: "${idleMinutes}",
         containers: containerTemplates,
+        workspaceVolume: workspaceVolume,
         volumes: volumes,
-        imagePullSecrets: imagePullSecrets) {
+        imagePullSecrets: imagePullSecrets,
+        yaml: podYaml) {
     body()
   }
 }

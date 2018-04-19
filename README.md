@@ -248,6 +248,7 @@ envValues | Array of environment variable definitions
 envValues.[].envVar | Variable name
 envValues.[].value | Variable value
 envValues.[].secret | Path to Vault K/V value. I.e `kv-backend/kv-name/kv-value-name`
+envValues.[].env | Name of Jenkins environment variable to take value from. Environment variables from [git plugin](https://wiki.jenkins.io/display/JENKINS/Git+Plugin) and [Jenkins](https://wiki.jenkins.io/display/JENKINS/Building+a+software+project#Buildingasoftwareproject-belowJenkinsSetEnvironmentVariables) are supported
 
 #### helmRepos
 
@@ -306,8 +307,13 @@ Setting | Description
 --- | ---
 rootfs | Array of rootfs objects
 rootfs.[].image | image to build, without the `:tag`
-rootfs.[].buildArgs | Array of `name: value` build args for the image
-rootfs.[].context | Path, relative to current workspace, to which rootfs folder build this image. I.e. `/something/under/rootfs`
+rootfs.[].buildArgs | Array of build arg objects for the image
+rootfs.[].buildArgs.[].arg | arg name
+rootfs.[].buildArgs.[].value | arg value
+rootfs.[].buildArgs.[].secret | Path to Vault K/V value. I.e `kv-backend/kv-name/kv-value-name`
+rootfs.[].buildArgs.[].env | Name of Jenkins environment variable to take value from. Environment variables from [git plugin](https://wiki.jenkins.io/display/JENKINS/Git+Plugin) and [Jenkins](https://wiki.jenkins.io/display/JENKINS/Building+a+software+project#Buildingasoftwareproject-belowJenkinsSetEnvironmentVariables) are supported
+rootfs.[].context | Path, relative to `current workspace/rootfs`, to which rootfs contains the docker file for this image. I.e. specifying `myimage` will look for `Dockerfile` under `/jenkins/workspace/rootfs/myimage`
+rootfs.[].dockerContext | Path relative to current `current workspace` that will serve as docker build context. I.e. specifying `.` will result in `docker build . -f /jenkins/workspace/rootfs/rootfs.[].context/Dockerfile`
 rootfs.[].chart | Name of the chart using this image, under `charts`
 rootfs.[].value | Dot-path to value under the chart's values.yaml that sets this image for the chart. I.e. `section.image.myawesomecontainer`
 
@@ -349,7 +355,7 @@ test.beforeScript | Script info to execute before test deployment
 test.beforeScript.image | Docker image to use for running the script
 test.beforeScript.shell | Shell to use for running the script
 test.beforeScript.script | Path to script file to run relative to current workspace
-test.afterScript | Script info to execute before test deployment
+test.afterScript | Script info to execute after test namespace is destroyed
 test.afterScript.image | Docker image to use for running the script
 test.afterScript.shell | Shell to use for running the script
 test.afterScript.script | Path to script file to run relative to current workspace
@@ -364,10 +370,11 @@ stage.beforeScript | Script info to execute before staging deployment
 stage.beforeScript.image | Docker image to use for running the script
 stage.beforeScript.shell | Shell to use for running the script
 stage.beforeScript.script | Path to script file to run relative to current workspace
-stage.afterScript | Script info to execute before staging deployment
+stage.afterScript | Script info to execute afrter staging deployment
 stage.afterScript.image | Docker image to use for running the script
 stage.afterScript.shell | Shell to use for running the script
 stage.afterScript.script | Path to script file to run relative to current workspace
+stage.deploy | deploy to stage, true or false. False by default
 
 #### prod 
 
