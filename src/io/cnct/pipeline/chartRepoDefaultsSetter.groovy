@@ -126,6 +126,16 @@ def setDefaults(rawSettings, defaults) {
       error("rootfs items must have 'image' field")
     }
 
+    if (!entry.buildArgs) {
+      entry.buildArgs = []
+    }
+
+    for (arg in entry.buildArgs) {
+      if (!arg.arg) {
+        error("Each rootfs buildArg items must have 'arg' field")
+      }
+    }
+
     if (entry.test) {
       entry.test.image = 
         entry.test.image ? entry.test.image : defaults.images.script
