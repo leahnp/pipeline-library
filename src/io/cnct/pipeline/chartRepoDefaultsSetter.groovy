@@ -122,6 +122,10 @@ def setDefaults(rawSettings, defaults) {
       error("rootfs items must have 'context' field")
     }
 
+    if (!entry.dockerContext) {
+      entry.dockerContext = "./rootfs/${entry.context}"
+    }
+
     if (!entry.image) {
       error("rootfs items must have 'image' field")
     }

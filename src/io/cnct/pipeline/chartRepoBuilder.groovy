@@ -306,7 +306,7 @@ def rootFsTestHandler(scmVars) {
 
       buildCommandString += mapToParams('--build-arg', argMap)
     }
-    buildCommandString += " rootfs/${container.context}"
+    buildCommandString += " ${container.dockerContext} --file rootfs/${container.context}/Dockerfile"
 
     parallelBuildSteps["${container.image.replaceAll('/','_')}-build"] = { sh(buildCommandString) }
 
@@ -469,7 +469,7 @@ def rootFsProdHandler(scmVars) {
       
       buildCommandString += mapToParams('--build-arg', argMap)
     }
-    buildCommandString += " rootfs/${container.context}"
+    buildCommandString += " ${container.dockerContext} --file rootfs/${container.context}/Dockerfile"
     parallelBuildSteps["${container.image.replaceAll('/','_')}-build"] = { sh(buildCommandString) }
 
     def tagCommandString = "docker tag ${defaults.docker.registry}/${container.image}:${useTag} \
