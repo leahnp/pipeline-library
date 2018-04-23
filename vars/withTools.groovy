@@ -15,6 +15,7 @@ def call(Map parameters = [:], body) {
   def vaultImage = parameters.get('vaultImage', globalDefaults.images.vault)
   def imagePullSecrets = parameters.get('imagePullSecrets', [])
   def volumes = parameters.get('volumes', [])
+  def workspaceVolume = persistentVolumeClaimWorkspaceVolume(claimName: globalDefaults.workspacePvc, readOnly: false)
   def containersParam = parameters.get('containers', [])
   def containerTemplates = []
 
@@ -77,8 +78,10 @@ def call(Map parameters = [:], body) {
   podTemplate(name: "${name}", label: label, inheritFrom: "${inheritFrom}", serviceAccount: "${serviceAccount}",
         idleMinutesStr: "${idleMinutes}",
         containers: containerTemplates,
+        workspaceVolume: workspaceVolume,
         volumes: volumes,
-        imagePullSecrets: imagePullSecrets) {
+        imagePullSecrets: imagePullSecrets,
+        ) {
     body()
   }
 }
