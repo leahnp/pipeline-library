@@ -114,6 +114,10 @@ def initializeHandler() {
     defaults: defaults,
     volumes: [secretVolume(secretName: pipeline.vault.tls.secret, mountPath: '/etc/vault/tls')]) {
     inside(label: buildId('tools')) {
+      
+      // cleanup workspace
+      deleteDir()
+      
       scmVars = checkout scm
       container('helm') {
         stage('Create image pull secrets') {
