@@ -3,7 +3,6 @@ jenkinsNamespace: prod
 prodNamespace: prod
 stageNamespace: staging
 serviceAccount: jenkins
-workspacePvc: pipeline-jenkins-workspace
 doDeploy: none
 retries: 1
 timeout: 600

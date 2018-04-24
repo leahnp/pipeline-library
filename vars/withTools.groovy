@@ -80,8 +80,7 @@ def call(Map parameters = [:], body) {
         containers: containerTemplates,
         workspaceVolume: workspaceVolume,
         volumes: volumes,
-        imagePullSecrets: imagePullSecrets,
-        ) {
+        imagePullSecrets: imagePullSecrets) {
     body()
   }
 }
