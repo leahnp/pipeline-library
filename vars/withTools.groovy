@@ -15,7 +15,6 @@ def call(Map parameters = [:], body) {
   def vaultImage = parameters.get('vaultImage', globalDefaults.images.vault)
   def imagePullSecrets = parameters.get('imagePullSecrets', [])
   def volumes = parameters.get('volumes', [])
-  def workspaceVolume = emptyDirWorkspaceVolume(memory: false)
   def containersParam = parameters.get('containers', [])
   def containerTemplates = []
   def pvcWorkspaceName = parameters.get('workspaceClaimName', null)
