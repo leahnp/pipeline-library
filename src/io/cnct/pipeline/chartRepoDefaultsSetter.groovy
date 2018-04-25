@@ -236,6 +236,9 @@ def setDefaults(rawSettings, defaults) {
   if (!rawSettings.stage) {
     rawSettings.stage = [:]
   }
+  if (!rawSettings.stage.deploy) {
+    rawSettings.stage.deploy = false
+  }
   if (rawSettings.stage.beforeScript) {
     rawSettings.stage.beforeScript.image = 
       rawSettings.stage.beforeScript.image ? rawSettings.stage.beforeScript.image : defaults.images.script

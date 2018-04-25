@@ -355,7 +355,7 @@ test.beforeScript | Script info to execute before test deployment
 test.beforeScript.image | Docker image to use for running the script
 test.beforeScript.shell | Shell to use for running the script
 test.beforeScript.script | Path to script file to run relative to current workspace
-test.afterScript | Script info to execute before test deployment
+test.afterScript | Script info to execute after test namespace is destroyed
 test.afterScript.image | Docker image to use for running the script
 test.afterScript.shell | Shell to use for running the script
 test.afterScript.script | Path to script file to run relative to current workspace
@@ -370,10 +370,11 @@ stage.beforeScript | Script info to execute before staging deployment
 stage.beforeScript.image | Docker image to use for running the script
 stage.beforeScript.shell | Shell to use for running the script
 stage.beforeScript.script | Path to script file to run relative to current workspace
-stage.afterScript | Script info to execute before staging deployment
+stage.afterScript | Script info to execute afrter staging deployment
 stage.afterScript.image | Docker image to use for running the script
 stage.afterScript.shell | Shell to use for running the script
 stage.afterScript.script | Path to script file to run relative to current workspace
+stage.deploy | deploy to stage, true or false. False by default
 
 #### prod 
 
