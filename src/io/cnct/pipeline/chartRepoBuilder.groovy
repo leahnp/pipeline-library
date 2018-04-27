@@ -138,7 +138,7 @@ def initializeHandler() {
       container('helm') {
         stage('Create jenkins storage class') {
           def storageClass = libraryResource("io/cnct/pipeline/jenkins-storage-class.yaml")
-          writeFile('jenkins-storage-class.yaml', storageClass)
+          writeFile(file: 'jenkins-storage-class.yaml', text: storageClass)
           sh("cat ${pwd()}/jenkins-storage-class.yaml")
           sh("kubectl create -f ${pwd()}/jenkins-storage-class.yaml || true")
         }
