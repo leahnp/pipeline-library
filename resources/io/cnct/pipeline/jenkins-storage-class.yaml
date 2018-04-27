@@ -4,5 +4,5 @@ metadata:
   name: jenkins-ci-storage-class
 parameters:
   type: gp2
-  zones: us-east-1d
+  zones: us-east-1a
 provisioner: kubernetes.io/aws-ebs
