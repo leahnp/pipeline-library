@@ -77,6 +77,8 @@ def postCleanup(err) {
 
           // always cleanup workspace pvc
           sh("kubectl delete pvc jenkins-workspace-${kubeName(env.JOB_NAME)} --namespace ${defaults.prodNamespace} || true")
+          // always cleanup var lib docker pvc
+          sh("kubectl delete pvc jenkins-varlibdocker-${kubeName(env.JOB_NAME)} --namespace ${defaults.prodNamespace} || true")
 
           if (isPRBuild || isSelfTest) {
 
@@ -136,13 +138,26 @@ def initializeHandler() {
       container('helm') {
         stage('Create workspace pvc') {
           echo('Loading pipeline worskspace pvc template')
-          def workspaceInfo = parseYaml(libraryResource("io/cnct/pipeline/workspace-pvc.yaml"))
+          def workspaceInfo = parseYaml(libraryResource("io/cnct/pipeline/utility-pvc.yaml"))
           workspaceInfo.metadata.name = "jenkins-workspace-${kubeName(env.JOB_NAME)}".toString()
+          workspaceInfo.spec.resources.requests.storage = defaults.workspaceSize
           toYamlFile(workspaceInfo, "${pwd()}/jenkins-workspace-${kubeName(env.JOB_NAME)}.yaml")
 
           echo('creating workspace pvc')
           sh("cat ${pwd()}/jenkins-workspace-${kubeName(env.JOB_NAME)}.yaml")
           sh("kubectl create -f ${pwd()}/jenkins-workspace-${kubeName(env.JOB_NAME)}.yaml --namespace ${defaults.prodNamespace}")
+        }
+
+        stage('Create var/lib/docker pvc') {
+          echo('Loading var/lib/docker pvc template')
+          def workspaceInfo = parseYaml(libraryResource("io/cnct/pipeline/utility-pvc.yaml"))
+          workspaceInfo.metadata.name = "jenkins-varlibdocker-${kubeName(env.JOB_NAME)}".toString()
+          workspaceInfo.spec.resources.requests.storage = defaults.dockerBuilderSize
+          toYamlFile(workspaceInfo, "${pwd()}/jenkins-varlibdocker-${kubeName(env.JOB_NAME)}.yaml")
+
+          echo('creating var/lib/docker pvc')
+          sh("cat ${pwd()}/jenkins-varlibdocker-${kubeName(env.JOB_NAME)}.yaml")
+          sh("kubectl create -f ${pwd()}/jenkins-varlibdocker-${kubeName(env.JOB_NAME)}.yaml --namespace ${defaults.prodNamespace}")
         }
 
         stage('Create image pull secrets') {
@@ -228,6 +243,7 @@ def runPR() {
     containers: getScriptImages(),
     imagePullSecrets: pullSecrets,
     workspaceClaimName: "jenkins-workspace-${kubeName(env.JOB_NAME)}",
+    dockerClaimName: "jenkins-varlibdocker-${kubeName(env.JOB_NAME)}",
     volumes: [secretVolume(secretName: pipeline.vault.tls.secret, mountPath: '/etc/vault/tls')]) {       
     
     inside(label: buildId('tools')) {
@@ -265,6 +281,7 @@ def runMerge() {
     containers: getScriptImages(),
     imagePullSecrets: pullSecrets,
     workspaceClaimName: "jenkins-workspace-${kubeName(env.JOB_NAME)}",
+    dockerClaimName: "jenkins-varlibdocker-${kubeName(env.JOB_NAME)}",
     volumes: [secretVolume(secretName: pipeline.vault.tls.secret, mountPath: '/etc/vault/tls')]) {
     inside(label: buildId('tools')) {
       stage('Checkout') {

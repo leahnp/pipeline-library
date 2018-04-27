@@ -3,6 +3,8 @@ jenkinsNamespace: prod
 prodNamespace: prod
 stageNamespace: staging
 serviceAccount: jenkins
+workspaceSize: 5Gi
+dockerBuilderSize: 10Gi
 doDeploy: none
 retries: 1
 timeout: 600
