@@ -310,6 +310,7 @@ def runMerge() {
       rootFsProdHandler(scmVars)
       chartProdHandler(scmVars)
       deployToProdHandler(scmVars)
+      chartProdVersion(scmVars)
 
       // run after scripts
       executeUserScript('Executing global \'after\' scripts', pipeline.afterScript)
@@ -849,6 +850,55 @@ def deployToProdHandler(scmVars) {
   }
 
   executeUserScript('Executing prod \'after\' script', pipeline.prod.afterScript)
+}
+
+def chartProdVersion(scmVars) {
+  def versionFileContents = readFile(defaults.versionfile).trim()
+  def parallelChartSteps = [:] 
+  
+  container('helm') {
+    stage('Preparing chart for production version') {
+      for (chart in pipeline.configs) {
+        if (chart.chart) {
+
+          // load chart yaml
+          def chartYaml = parseYaml(readFile("${pwd()}/charts/${chart.chart}/Chart.yaml"))
+          chartYaml.version = versionFileContents
+          toYamlFile(chartYaml, "${pwd()}/charts/${chart.chart}/Chart.yaml")
+
+          // unstash values changes if applicable
+          unstashCheck("${chart.chart}-values-${env.BUILD_ID}".replaceAll('-','_'))
+
+          // package chart, send it to registry
+          parallelChartSteps["${chart.chart}-upload"] = {
+            withCredentials(
+              [usernamePassword(
+                credentialsId: defaults.helm.credentials, 
+                usernameVariable: 'REGISTRY_USER',
+                passwordVariable: 'REGISTRY_PASSWORD')]) {
+                def registryUser = env.REGISTRY_USER
+                def registryPass = env.REGISTRY_PASSWORD
+                def helmCommand = """helm init --client-only
+                  helm repo add pipeline https://${defaults.helm.registry}"""
+
+                for (repo in pipeline.helmRepos) {
+                  helmCommand = "${helmCommand}\nhelm repo add ${repo.name} ${repo.url}"
+                }
+
+                helmCommand = """${helmCommand}
+                  helm dependency update --debug charts/${chart.chart}
+                  helm package --debug charts/${chart.chart}
+                  curl -u ${registryUser}:${registryPass} --data-binary @${chart.chart}-${chartYaml.version}.tgz https://${defaults.helm.registry}/api/charts"""
+
+                sh(helmCommand)
+            }
+          }
+        }
+      }
+
+      parallel parallelChartSteps
+    }
+  }
 }
 
 // run helm tests
