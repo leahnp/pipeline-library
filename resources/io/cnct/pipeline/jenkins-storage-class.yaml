@@ -1,8 +1,8 @@
 apiVersion: storage.k8s.io/v1
 kind: StorageClass
 metadata:
-  name: jenkins-ci-storage-class
+  name: set me
 parameters:
   type: gp2
-  zones: us-east-1a
+  zones: set me
 provisioner: kubernetes.io/aws-ebs
