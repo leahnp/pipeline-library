@@ -41,7 +41,7 @@ spec:
   envVars.add(containerEnvVar(key: 'DOCKER_HOST', value: 'localhost:2375'))
 
   if (pvcVarLibDockerName) {
-    volumes.add(emptyDirVolume(mountPath: '/var/lib/docker', claimName: pvcVarLibDockerName, readOnly: false))
+    volumes.add(persistentVolumeClaim(mountPath: '/var/lib/docker', claimName: pvcVarLibDockerName, readOnly: false))
   } else {
     volumes.add(emptyDirVolume(mountPath: '/var/lib/docker', memory: false))
   }
