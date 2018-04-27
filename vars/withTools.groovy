@@ -17,6 +17,7 @@ def call(Map parameters = [:], body) {
   def volumes = parameters.get('volumes', [])
   def containersParam = parameters.get('containers', [])
   def containerTemplates = []
+  def pvcVarLibDockerName = parameters.get('dockerClaimName', null)
   def pvcWorkspaceName = parameters.get('workspaceClaimName', null)
 
   def podYaml = ""
@@ -38,7 +39,12 @@ spec:
   }
 
   envVars.add(containerEnvVar(key: 'DOCKER_HOST', value: 'localhost:2375'))
-  volumes.add(emptyDirVolume(mountPath: '/var/lib/docker', memory: false))
+
+  if (pvcVarLibDockerName) {
+    volumes.add(emptyDirVolume(mountPath: '/var/lib/docker', claimName: pvcVarLibDockerName, readOnly: false))
+  } else {
+    volumes.add(emptyDirVolume(mountPath: '/var/lib/docker', memory: false))
+  }
 
   containerTemplates.add(
     containerTemplate(
