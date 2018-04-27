@@ -79,6 +79,8 @@ def postCleanup(err) {
           sh("kubectl delete pvc jenkins-workspace-${kubeName(env.JOB_NAME)} --namespace ${defaults.prodNamespace} || true")
           // always cleanup var lib docker pvc
           sh("kubectl delete pvc jenkins-varlibdocker-${kubeName(env.JOB_NAME)} --namespace ${defaults.prodNamespace} || true")
+          // always cleanup storageclass
+          sh("kubectl delete storageclass jenkins-storageclass-${kubeName(env.JOB_NAME)} || true")
 
           if (isPRBuild || isSelfTest) {
 
@@ -136,11 +138,24 @@ def initializeHandler() {
       
       scmVars = checkout scm
       container('helm') {
+        stage('Create jenkins storage class') {
+          echo('Loading jenkins storage class template')
+          def storageClass = parseYaml(libraryResource("io/cnct/pipeline/jenkins-storage-class.yaml"))
+          storageClass.metadata.name = "jenkins-storageclass-${kubeName(env.JOB_NAME)}".toString()
+          storageClass.parameters.zones = defaults.pvcZone
+          toYamlFile(storageClass, "${pwd()}/jenkins-storageclass-${kubeName(env.JOB_NAME)}.yaml")
+
+          echo('creating jenkins storage class')
+          sh("cat ${pwd()}/jenkins-storageclass-${kubeName(env.JOB_NAME)}.yaml")
+          sh("kubectl create -f ${pwd()}/jenkins-storageclass-${kubeName(env.JOB_NAME)}.yaml")
+        }
+
         stage('Create workspace pvc') {
           echo('Loading pipeline worskspace pvc template')
           def workspaceInfo = parseYaml(libraryResource("io/cnct/pipeline/utility-pvc.yaml"))
           workspaceInfo.metadata.name = "jenkins-workspace-${kubeName(env.JOB_NAME)}".toString()
           workspaceInfo.spec.resources.requests.storage = defaults.workspaceSize
+          workspaceInfo.spec.storageClassName = "jenkins-storageclass-${kubeName(env.JOB_NAME)}".toString()
           toYamlFile(workspaceInfo, "${pwd()}/jenkins-workspace-${kubeName(env.JOB_NAME)}.yaml")
 
           echo('creating workspace pvc')
@@ -150,10 +165,11 @@ def initializeHandler() {
 
         stage('Create var/lib/docker pvc') {
           echo('Loading var/lib/docker pvc template')
-          def workspaceInfo = parseYaml(libraryResource("io/cnct/pipeline/utility-pvc.yaml"))
-          workspaceInfo.metadata.name = "jenkins-varlibdocker-${kubeName(env.JOB_NAME)}".toString()
-          workspaceInfo.spec.resources.requests.storage = defaults.dockerBuilderSize
-          toYamlFile(workspaceInfo, "${pwd()}/jenkins-varlibdocker-${kubeName(env.JOB_NAME)}.yaml")
+          def dockerInfo = parseYaml(libraryResource("io/cnct/pipeline/utility-pvc.yaml"))
+          dockerInfo.metadata.name = "jenkins-varlibdocker-${kubeName(env.JOB_NAME)}".toString()
+          dockerInfo.spec.resources.requests.storage = defaults.dockerBuilderSize
+          dockerInfo.spec.storageClassName = "jenkins-storageclass-${kubeName(env.JOB_NAME)}".toString()
+          toYamlFile(dockerInfo, "${pwd()}/jenkins-varlibdocker-${kubeName(env.JOB_NAME)}.yaml")
 
           echo('creating var/lib/docker pvc')
           sh("cat ${pwd()}/jenkins-varlibdocker-${kubeName(env.JOB_NAME)}.yaml")
