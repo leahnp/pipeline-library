@@ -183,8 +183,7 @@ def initializeHandler() {
               def secretVal = getVaultKV(
                 defaults,
                 vaultToken,
-                pull.password.tokenize('/').init().join('/'), 
-                pull.password.tokenize('/').last())
+                pull.password)
 
               def deleteSecrets = """
                 kubectl delete secret ${pull.name} --namespace=${defaults.jenkinsNamespace} || true"""
@@ -213,8 +212,7 @@ def initializeHandler() {
                 def secretVal = getVaultKV(
                   defaults,
                   vaultToken,
-                  envValue.secret.tokenize('/').init().join('/'), 
-                  envValue.secret.tokenize('/').last())
+                  envValue.secret)
                 pipelineEnvVariables += envVar(
                   key: envValue.envVar, 
                   value: secretVal)
@@ -330,6 +328,8 @@ def rootFsTestHandler(scmVars) {
   def parallelTagSteps = [:]
   def parallelPushSteps = [:]
 
+  executeUserScript('Executing test \'before\' script', pipeline.test.beforeScript)
+
   // get tag text
   def useTag = makeDockerTag(defaults, gitCommit)
 
@@ -347,8 +347,7 @@ def rootFsTestHandler(scmVars) {
             def secretVal = getVaultKV(
               defaults,
               vaultToken,
-              buildArg.secret.tokenize('/').init().join('/'), 
-              buildArg.secret.tokenize('/').last())
+              buildArg.secret)
             argMap += ["${buildArg.arg}" : "${secretVal.trim()}"]
           }
         } else if (buildArg.env) {
@@ -431,6 +430,8 @@ def rootFsStageHandler(scmVars) {
   def parallelTagSteps = [:]
   def parallelPushSteps = [:]
 
+  executeUserScript('Executing stage \'before\' script', pipeline.stage.beforeScript)
+
   // get tag text
   def useTag = makeDockerTag(defaults, gitCommit)
 
@@ -490,6 +491,8 @@ def rootFsProdHandler(scmVars) {
   def parallelTagSteps = [:]
   def parallelPushSteps = [:]
 
+  executeUserScript('Executing prod \'before\' script', pipeline.prod.beforeScript)
+
   // get tag text
   def useTag = makeDockerTag(defaults, gitCommit)
 
@@ -510,8 +513,7 @@ def rootFsProdHandler(scmVars) {
             def secretVal = getVaultKV(
               defaults,
               vaultToken,
-              buildArg.secret.tokenize('/').init().join('/'), 
-              buildArg.secret.tokenize('/').last())
+              buildArg.secret)
             argMap += ["${buildArg.arg}" : "${secretVal.trim()}"]
           }
         } else if (buildArg.env) {
@@ -712,8 +714,7 @@ def chartProdHandler(scmVars) {
 
 // deploy chart from source into testing namespace
 def deployToTestHandler(scmVars) {
-  executeUserScript('Executing test \'before\' script', pipeline.test.beforeScript)
-  
+    
   container('helm') {
     stage('Deploying to test namespace') {
       def deploySteps = [:]
@@ -759,7 +760,6 @@ def deployToTestHandler(scmVars) {
 
 // deploy chart from source into staging namespace
 def deployToStageHandler(scmVars) { 
-  executeUserScript('Executing stage \'before\' script', pipeline.stage.beforeScript)
   
   if (pipeline.stage.deploy) {
     container('helm') {
@@ -795,8 +795,7 @@ def deployToStageHandler(scmVars) {
 
 // deploy chart from repository into prod namespace, 
 // conditional on doDeploy
-def deployToProdHandler(scmVars) {
-  executeUserScript('Executing prod \'before\' script', pipeline.prod.beforeScript) 
+def deployToProdHandler(scmVars) { 
   def versionfileChanged = isPathChange(defaults.versionfile, "${env.CHANGE_ID}")
 
   container('helm') {
@@ -995,8 +994,7 @@ def envMapToSetParams(envMap) {
           def secretVal = getVaultKV(
             defaults,
             env.VAULT_TOKEN,
-            obj.secret.tokenize('/').init().join('/'), 
-            obj.secret.tokenize('/').last())
+            obj.secret)
 
           setParamString += """'${secretVal}'"""
         }
