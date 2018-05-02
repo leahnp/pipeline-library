@@ -1,7 +1,11 @@
 # Table of Contents
 
-<!-- MarkdownTOC depth=4 autolink=true bracket=round -->
+<!-- MarkdownTOC levels="1,2,3,4,5,6" autolink=true bracket="round" -->
 
+- [Quick start](#quick-start)
+  - [Create a github repository](#create-a-github-repository)
+  - [Edit the values.yaml file](#edit-the-valuesyaml-file)
+  - [Edit pipeline.yaml](#edit-pipelineyaml)
 - [CNCT shared workflow library](#cnct-shared-workflow-library)
   - [Jenkins Helm chart](#jenkins-helm-chart)
   - [Job configurations](#job-configurations)
@@ -29,11 +33,74 @@
   - [User scripts](#user-scripts)
     - [Environment variables](#environment-variables)
   - [Pipeline flow](#pipeline-flow)
-  - [Common problems](#pipeline-flow)
+  - [Common problems](#common-problems)
     - [Problems with chart labels](#problems-with-chart-labels)
     - [Conversion from solas](#conversion-from-solas)
 
 <!-- /MarkdownTOC -->
+
+# Quick start
+
+## Create a github repository
+
+Create a Github repository with the following folder structure, substituting your own names for things like `MY-CHART-NAME` and `MY-CHART-IMAGE` 
+
+```
+.
+├── .versionfile
+├── README.md
+├── charts
+│   └── MY-CHART-NAME
+│       ├── .helmignore
+│       ├── Chart.yaml
+│       ├── templates
+│       │   └── chart templates here
+│       └── values.yaml
+├── pipeline.yaml
+├── rootfs
+│   └── MY-CHART-IMAGE
+│       └── Dockerfile
+└── src
+    └── helloWorld.go
+```
+
+## Edit the values.yaml file
+
+Edit the `values.yaml` for your chart, to make sure it is compatible with how the pipeline treats chart docker images.  
+Make sure that your `values.yaml` specifies source docker images form pods as single value - not separating image and tag:
+
+```
+replicas: 1
+service:
+  name: my-service
+images:
+  myMainImage: quay.io/samsung_cnct/MY-CHART-IMAGE:prod
+```
+
+## Edit pipeline.yaml 
+
+Edit the `pipeline.yaml` file:
+
+```
+type: chart
+rootfs:
+ - image: samsung_cnct/MY-CHART-IMAGE     # do not include 'quay.io' part
+   context: MY-CHART-IMAGE                # folder name under rootfs folder
+   dockerContext: .                       # docker build context, relative to root of github repository
+   chart: MY-CHART-NAME                   # name of the chart in Chart.yaml
+   value: images.myMainImage
+configs:
+ - chart: dashboard-demo
+   timeout: 600
+   retries: 1
+   release: dashboard-demo
+prod:
+ doDeploy: auto
+```
+
+
+* Create and merge a pull request with your github repository configuration to [CNCT job configuration repo](https://github.com/samsung-cnct/pipeline-jobs)
+*  
 
 # CNCT shared workflow library
 
