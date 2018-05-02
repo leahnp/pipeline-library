@@ -6,6 +6,11 @@
   - [Create a github repository](#create-a-github-repository)
   - [Edit the values.yaml file](#edit-the-valuesyaml-file)
   - [Edit pipeline.yaml](#edit-pipelineyaml)
+  - [Edit .versionfile](#edit-versionfile)
+  - [Edit your Dockerfile](#edit-your-dockerfile)
+  - [Add job configuration](#add-job-configuration)
+  - [Bonus: Add job status badge to your readme](#bonus-add-job-status-badge-to-your-readme)
+- [Conversion from solas](#conversion-from-solas)
 - [CNCT shared workflow library](#cnct-shared-workflow-library)
   - [Jenkins Helm chart](#jenkins-helm-chart)
   - [Job configurations](#job-configurations)
@@ -35,7 +40,6 @@
   - [Pipeline flow](#pipeline-flow)
   - [Common problems](#common-problems)
     - [Problems with chart labels](#problems-with-chart-labels)
-    - [Conversion from solas](#conversion-from-solas)
 
 <!-- /MarkdownTOC -->
 
@@ -83,24 +87,161 @@ Edit the `pipeline.yaml` file:
 
 ```
 type: chart
-rootfs:
+rootfs:                                   # image building configuration
  - image: samsung_cnct/MY-CHART-IMAGE     # do not include 'quay.io' part
    context: MY-CHART-IMAGE                # folder name under rootfs folder
    dockerContext: .                       # docker build context, relative to root of github repository
    chart: MY-CHART-NAME                   # name of the chart in Chart.yaml
-   value: images.myMainImage
-configs:
- - chart: dashboard-demo
-   timeout: 600
-   retries: 1
-   release: dashboard-demo
-prod:
- doDeploy: auto
+   value: images.myMainImage              # yaml path to docker image value in values.yaml of MY-CHART-NAME chart
+configs:                                  # chart building configuration
+ - chart: MY-CHART-NAME                   # name of the chart in Chart.yaml
+   timeout: 600                           # timeout values for things like running Helm tests
+   retries: 1                             # number of retries for things like Helm tests
+   release: MY-RELEASE-NAME               # name of Helm release
+prod:                                     # prod environment options
+ doDeploy: auto                           # deploy to prod ever time something is merged into 'master' branch
+``` 
+
+## Edit .versionfile
+
+Add a `Major.Minor.Build` string to `.versionfile`:
+
+```
+0.0.1
 ```
 
+## Edit your Dockerfile
 
-* Create and merge a pull request with your github repository configuration to [CNCT job configuration repo](https://github.com/samsung-cnct/pipeline-jobs)
-*  
+Fill out the `Dockerfile` with steps to build your binary
+
+```
+FROM golang
+LABEL authors="YOUR NAME<YOUR@EMAIL>"
+
+RUN ls
+
+# we set dockerContext to '.', so we can copy from 'src' relative to our github repo root
+COPY src/helloWorld.go /helloWorld.go
+RUN go build helloWorld.go
+
+CMD helloWorld
+```
+
+Commit all the changes to your repository
+
+## Add job configuration
+
+Create and merge a pull request with your github repository configuration to [CNCT job configuration repo](https://github.com/samsung-cnct/pipeline-jobs)  
+Add the following under `configs`:
+
+```
+---
+type: cnct
+uniqueId: pipeline-MY-CHART-NAME
+displayName: pipeline-MY-CHART-NAME
+description: MY-CHART-DESCRIPTION 
+apiUrl: "https://api.github.com"
+org: samsung-cnct
+repo: MY-GITHUB-REPOSITORY-NAME
+keepDays: 10
+credentials: github-access
+```
+
+## Bonus: Add job status badge to your readme
+
+Add the jenkins job badge to your repo README.md:
+
+```
+[![Build Status](https://jenkins.migrations.cnct.io/buildStatus/icon?job=pipeline-MY-CHART-NAME/master)](https://jenkins.migrations.cnct.io/job/pipeline-MY-CHART-NAME/job/master)
+```
+
+# Conversion from solas
+
+* Add a config for your gihub repository to `https://github.com/samsung-cnct/pipeline-jobs/tree/master/configs` and create a PR.
+* Make sure `Chart.yaml` is not in your `.gitignore` file
+* Create `rootfs/your-docker-image-name` and `charts/your-chart-name` folders in the rootof your git repo
+* Move all the chart files from `/your-chart-name` to `charts/your-chart-name`
+* Move `/build/Chart.yaml.in` to `charts/your-chart-name/Chart.yaml`
+* Add a real chart version to `charts/your-chart-name/Chart.yaml`. Actual version number doesn't matter too much as you will set the base version in `.versionfile`
+* Move the `Dockerfile` and whatever otherfiles the docker build context will need from `github.com/samsung-cnct/your-project-container` to `rootfs/your-docker-image-name/`
+* Create `.versionfile` in the root of your repository. Put a real base version number in the file in `Major.Minor.Build` format.
+* Make sure chart templates don't use `.Chart.Version` directly (see [Problems with chart labels](#problems-with-chart-labels))
+* Change `values.yaml` and chart if needed:
+
+Whatever values.yaml structure you have picked for your chart, there is only one requirement - the docker image and docker image tag need to be a single value. I.e., lets say you have the following section in your chart's `values.yaml`
+
+```
+service: mychart
+images:
+  myimage: quay.io/samsung-cnct/my-image
+  mytag: 1.1.1
+  pullPolicy: Always
+config:
+  other: value
+```
+
+You will have to change your chart to work with:
+
+```
+service: mychart
+images:
+  myimage: quay.io/samsung-cnct/my-image:1.1.1
+  pullPolicy: Always
+config:
+  other: value
+```
+
+* Create `pipeline.yaml` file in the root of your repository. 
+* Fill out `pipeline.yaml`
+
+The important sections are:
+
+```
+type: chart
+rootfs:
+  - image: samsung-cnct/my-image        # docker image name. DO NOT include the registry name (quay.io part)
+    context: your-docker-image-name     # folder containing the Dockerfile under ./rootfs
+    chart: your-chart-name              # folder containing the chart files under ./charts
+    value: images.myimage               # YAML path to the value referring to docker image name in your-chart-name values.yaml
+configs:
+  - chart: your-chart-name              # folder containing the chart files under ./charts 
+    release: your-helm-release-name     # name of the helm release for your-chart-name
+    test: 
+      values:
+        - key: config.other             # YAML path to the value referring to the value you want to override
+          value: override-value         # value to override with
+    stage: 
+      values:
+    ...
+    prod:
+      values:
+prod:
+  doDeploy: versionfile                 # set to 'versionfile' to deploy to prod when .versionfile changes. Set to 'auto' to continously deploy on every merged change. Set to 'none' to never deploy to prod
+```
+
+YAML path is simply a dot-path to a yaml value. For the following snippet:
+
+
+```
+service: mychart
+images:
+  myimage: quay.io/samsung-cnct/my-image:1.1.1
+  pullPolicy: Always
+config:
+  other: value
+```
+
+YAML path to `myimage` is `images.myimage`. YAML path to `other` is `config.other`.
+
+Value overrides translate to `--set` directives to `helm install` and `helm upgrade`. For the following snippet:
+
+```
+values:
+  - key: config.other 
+    value: override-value
+```
+
+pipeline will run `helm install ... --set config.other='override-value'`
 
 # CNCT shared workflow library
 
@@ -141,38 +282,38 @@ Defaults are located in the [resources](resources/io/cnct/pipeline/defaults.yaml
 These specify default values for pipeline runs. Some of the values can only be specified in the defaults file, some can be overwritten by the individual repository configurations.
 
 Setting | Description
---- | ---
-jenkinsNamespace | Kubernetes namespace of Jenkins agent pods 
-prodNamespace | 'Production' kubernetes namespace
-stageNamespace | 'Staging' kubernetes namespace
-serviceAccount | Jenkins Kubernetes service account
-doDeploy | Deploy to prod on merge: `none` never; `versionfile` when version file changes; `auto` always
-retries | Number of retries on deploys and tests
-timeout | Helm timeout
-versionfile | Name of a version file required for every pipeline application repository
-shell | Default shell for script execution
-slack.channel | Default notification channel
-slack.credentials | Jenkins slack credentials id
-slack.domain | Slack team domain 
-image.dind | Default image for docker-in-docker container
-image.docker | Default image for docker client container
-image.helm | Default image for helm client container
-image.vault | Default image for vault client container
-image.script | Default image for script container
-vault.server | Vault server URL
-vault.credentials | Id of hashicorp vault token credentials from Jenkins deployment
-vault.api | Vault API version
-vault.tls.secret | Name of kubernetes secret containing vault client TLS certs 
-vault.tls.cert | Name of client cert in the client TLS secret 
-vault.tls.key | Name of client key in the client TLS secret
-vault.tls.ca | Name of CA cert in the client TLS secret
-helm.namespace | Tiller namespace
-helm.registry | URL of chart museum API
-docker.registry | Docker registry to use
-docker.credentials | Id of docker registry username and password credentials from Jenkins deployment
-docker.testTag | Additonal tag for test stage images
-docker.stageTag | Additonal tag for staging stage images 
-docker.prodTag | Additonal tag for prod stage images
+| :--- | :---: |
+`jenkinsNamespace` | Kubernetes namespace of Jenkins agent pods 
+`prodNamespace` | 'Production' kubernetes namespace
+`stageNamespace` | 'Staging' kubernetes namespace
+`serviceAccount` | Jenkins Kubernetes service account
+`doDeploy` | Deploy to prod on merge: `none` never; `versionfile` when version file changes; `auto` always
+`retries` | Number of retries on deploys and tests
+`timeout` | Helm timeout
+`versionfile` | Name of a version file required for every pipeline application repository
+`shell` | Default shell for script execution
+`slack.channel` | Default notification channel
+`slack.credentials` | Jenkins slack credentials id
+`slack.domain` | Slack team domain 
+`image.dind` | Default image for docker-in-docker container
+`image.docker` | Default image for docker client container
+`image.helm` | Default image for helm client container
+`image.vault` | Default image for vault client container
+`image.script` | Default image for script container
+`vault.server`| Vault server URL
+`vault.credentials` | Id of hashicorp vault token credentials from Jenkins deployment
+`vault.api` | Vault API version
+`vault.tls.secret` | Name of kubernetes secret containing vault client TLS certs 
+`vault.tls.cert` | Name of client cert in the client TLS secret 
+`vault.tls.key` | Name of client key in the client TLS secret
+`vault.tls.ca` | Name of CA cert in the client TLS secret
+`helm.namespace` | Tiller namespace
+`helm.registry` | URL of chart museum API
+`docker.registry` | Docker registry to use
+`docker.credentials` | Id of docker registry username and password credentials from Jenkins deployment
+`docker.testTag` | Additonal tag for test stage images
+`docker.stageTag` | Additonal tag for staging stage images 
+`docker.prodTag` | Additonal tag for prod stage images
 
 Example:
 
@@ -282,88 +423,88 @@ Cofiguration for each individual pipeline.
 Type of pipeline. Currently only `chart` is supported
 
 Setting | Description
---- | ---
-type | Type of pipeline
+| :--- | :---: |
+`type` | Type of pipeline
 
 #### beforeScript
 
 Global 'Before' script to be executed. Executed after environment variable injection and pull secret creation.
 
 Setting | Description
---- | ---
-beforeScript.image | docker image to use.
-beforeScript.script | path to script file to run relative to current workspace
-beforeScript.shell | Which shell to use for execution
+| :--- | :---: |
+`beforeScript.image` | docker image to use.
+`beforeScript.script` | path to script file to run relative to current workspace
+`beforeScript.shell` | Which shell to use for execution
 
 #### afterScript
 
 Global 'After' script to be executed. Executed after everything else in the pipeline finished.
 
 Setting | Description
---- | ---
-afterScript.image | docker image to use.
-afterScript.script | path to script file to run relative to current workspace
-afterScript.shell | Which shell to use for execution
+| :--- | :---: |
+`afterScript.image` | docker image to use.
+`afterScript.script` | path to script file to run relative to current workspace
+`afterScript.shell` | Which shell to use for execution
 
 #### envValues
 
 Environment values to be injected. Can be straight values, or references to a value from Vault K/V.
 
 Setting | Description
---- | ---
-envValues | Array of environment variable definitions
-envValues.[].envVar | Variable name
-envValues.[].value | Variable value
-envValues.[].secret | Path to Vault K/V value. I.e `kv-backend/kv-name/kv-value-name`
-envValues.[].env | Name of Jenkins environment variable to take value from. Environment variables from [git plugin](https://wiki.jenkins.io/display/JENKINS/Git+Plugin) and [Jenkins](https://wiki.jenkins.io/display/JENKINS/Building+a+software+project#Buildingasoftwareproject-belowJenkinsSetEnvironmentVariables) are supported
+| :--- | :---: |
+`envValues` | Array of environment variable definitions
+`envValues.[].envVar` | Variable name
+`envValues.[].value` | Variable value
+`envValues.[].secret` | Path to Vault K/V value. I.e `kv-backend/kv-name/kv-value-name`
+`envValues.[].env` | Name of Jenkins environment variable to take value from. Environment variables from [git plugin](https://wiki.jenkins.io/display/JENKINS/Git+Plugin) and [Jenkins](https://wiki.jenkins.io/display/JENKINS/Building+a+software+project#Buildingasoftwareproject-belowJenkinsSetEnvironmentVariables) are supported
 
 #### helmRepos
 
 Helm repositories for requirements. `pipeline` is a reserved name and should not be used
 
 Setting | Description
---- | ---
-helmRepos | Array of helm repository definitions
-helmRepos.[].name | Repository local name, e.g. `incubator`
-helmRepos.[].url | Repository URL, e.g. `https://kubernetes-charts-incubator.storage.googleapis.com`
+| :--- | :---: |
+`helmRepos` | Array of helm repository definitions
+`helmRepos.[].name` | Repository local name, e.g. `incubator`
+`helmRepos.[].url` | Repository URL, e.g. `https://kubernetes-charts-incubator.storage.googleapis.com`
 
 #### slack
 
 Slack notification info.
 
 Setting | Description
---- | ---
-slack.channel | channel for notifications
+| :--- | :---: |
+`slack.channel` | channel for notifications
 
 #### vault
 
 Vault server information
 
 Setting | Description
---- | ---
-vault.server | Vault server URL
-vault.credentials | Jenkins vault token credential ID
+| :--- | :---: |
+`vault.server` | Vault server URL
+`vault.credentials` | Jenkins vault token credential ID
 
 #### helm
 
 Helm namespace information
 
 Setting | Description
---- | ---
-helm.namespace | Tiller namespace
+| :--- | :---: |
+`helm.namespace` | Tiller namespace
 
 #### pullSecrets
 
 Kubernetes image pull secrets to create, in case some of the docker images used in the pipeline building process are in private repositories. Do not apply to the image BEING built, just images used FOR BUILDING.
 
 Setting | Description
---- | ---
-pullSecrets | Array of pull secret objects
-pullSecrets.[].name | pull secret name
-pullSecrets.[].server | Registry server
-pullSecrets.[].username | Registry user name
-pullSecrets.[].email | Registry email
-pullSecrets.[].password | Path to Vault K/V value containing registry password. I.e `kv-backend/kv-name/kv-value-name`
+| :--- | :---: |
+`pullSecrets` | Array of pull secret objects
+`pullSecrets.[].name` | pull secret name
+`pullSecrets.[].server` | Registry server
+`pullSecrets.[].username` | Registry user name
+`pullSecrets.[].email` | Registry email
+`pullSecrets.[].password` | Path to Vault K/V value containing registry password. I.e `kv-backend/kv-name/kv-value-name`
 
 
 #### rootfs 
@@ -371,93 +512,93 @@ pullSecrets.[].password | Path to Vault K/V value containing registry password. 
 Array of images to be built under `rootfs` folder, and how they relate to Helm values of charts under `charts`
 
 Setting | Description
---- | ---
-rootfs | Array of rootfs objects
-rootfs.[].image | image to build, without the `:tag`
-rootfs.[].buildArgs | Array of build arg objects for the image
-rootfs.[].buildArgs.[].arg | arg name
-rootfs.[].buildArgs.[].value | arg value
-rootfs.[].buildArgs.[].secret | Path to Vault K/V value. I.e `kv-backend/kv-name/kv-value-name`
-rootfs.[].buildArgs.[].env | Name of Jenkins environment variable to take value from. Environment variables from [git plugin](https://wiki.jenkins.io/display/JENKINS/Git+Plugin) and [Jenkins](https://wiki.jenkins.io/display/JENKINS/Building+a+software+project#Buildingasoftwareproject-belowJenkinsSetEnvironmentVariables) are supported
-rootfs.[].context | Path, relative to `current workspace/rootfs`, to which rootfs contains the docker file for this image. I.e. specifying `myimage` will look for `Dockerfile` under `/jenkins/workspace/rootfs/myimage`
-rootfs.[].dockerContext | Path relative to current `current workspace` that will serve as docker build context. I.e. specifying `.` will result in `docker build . -f /jenkins/workspace/rootfs/rootfs.[].context/Dockerfile`
-rootfs.[].chart | Name of the chart using this image, under `charts`
-rootfs.[].value | Dot-path to value under the chart's values.yaml that sets this image for the chart. I.e. `section.image.myawesomecontainer`
+| :--- | :---: |
+`rootfs` | Array of rootfs objects
+`rootfs.[].image` | image to build, without the `:tag`
+`rootfs.[].buildArgs` | Array of build arg objects for the image
+`rootfs.[].buildArgs.[].arg` | arg name
+`rootfs.[].buildArgs.[].value` | arg value
+`rootfs.[].buildArgs.[].secret` | Path to Vault K/V value. I.e `kv-backend/kv-name/kv-value-name`
+`rootfs.[].buildArgs.[].env` | Name of Jenkins environment variable to take value from. Environment variables from [git plugin](https://wiki.jenkins.io/display/JENKINS/Git+Plugin) and [Jenkins](https://wiki.jenkins.io/display/JENKINS/Building+a+software+project#Buildingasoftwareproject-belowJenkinsSetEnvironmentVariables) are supported
+`rootfs.[].context` | Path, relative to `current workspace/rootfs`, to which rootfs contains the docker file for this image. I.e. specifying `myimage` will look for `Dockerfile` under `/jenkins/workspace/rootfs/myimage`
+`rootfs.[].dockerContext` | Path relative to current `current workspace` that will serve as docker build context. I.e. specifying `.` will result in `docker build . -f /jenkins/workspace/rootfs/rootfs.[].context/Dockerfile`
+`rootfs.[].chart` | Name of the chart using this image, under `charts`
+`rootfs.[].value` | Dot-path to value under the chart's values.yaml that sets this image for the chart. I.e. `section.image.myawesomecontainer`
 
 #### configs
 
 Pipeline stage configurations
 
 Setting | Description
---- | ---
-configs | Array of pipeline stage configurations objects
-configs.[].chart | Chart name under `charts`
-configs.[].timeout | Helm timeout for things like helm tests
-configs.[].retries | Humber of retries for things like helm tests
-configs.[].release | Helm prod release name
-configs.[].test.values | Array of override values for test stage. Can be straight values, or references to a value from Vault K/V.
-configs.[].test.values.[].key | Name of helm value. I.e. `some.key.somewhere`
-configs.[].test.values.[].value | Value to use
-configs.[].test.values.[].secret | Path to Vault K/V value containing the value. I.e `kv-backend/kv-name/kv-value-name`
-configs.[].stage.values | Array of override values for staging stage. Can be straight values, or references to a value from Vault K/V.
-configs.[].stage.values.[].key | Name of helm value. I.e. `some.key.somewhere`
-configs.[].stage.values.[].value | Value to use
-configs.[].stage.values.[].secret | Path to Vault K/V value containing the value. I.e `kv-backend/kv-name/kv-value-name`
-configs.[].stage.tests | Array of test scripts to run as part of staging tests
-configs.[].stage.tests.[].image | Docker image to use
-configs.[].stage.tests.[].shell | Shell to use for running the script
-configs.[].stage.tests.[].script | Path to script file to run relative to current workspace
-configs.[].prod.values | Array of override values for prod stage. Can be straight values, or references to a value from Vault K/V.
-configs.[].prod.values.[].key | Name of helm value. I.e. `some.key.somewhere`
-configs.[].prod.values.[].value | Value to use
-configs.[].prod.values.[].secret | Path to Vault K/V value containing the value. I.e `kv-backend/kv-name/kv-value-name`
+| :--- | :---: |
+`configs` | Array of pipeline stage configurations objects
+`configs.[].chart` | Chart name under `charts`
+`configs.[].timeout` | Helm timeout for things like helm tests
+`configs.[].retries` | Humber of retries for things like helm tests
+`configs.[].release` | Helm prod release name
+`configs.[].test.values` | Array of override values for test stage. Can be straight values, or references to a value from Vault K/V.
+`configs.[].test.values.[].key` | Name of helm value. I.e. `some.key.somewhere`
+`configs.[].test.values.[].value` | Value to use
+`configs.[].test.values.[].secret` | Path to Vault K/V value containing the value. I.e `kv-backend/kv-name/kv-value-name`
+`configs.[].stage.values` | Array of override values for staging stage. Can be straight values, or references to a value from Vault K/V.
+`configs.[].stage.values.[].key` | Name of helm value. I.e. `some.key.somewhere`
+`configs.[].stage.values.[].value` | Value to use
+`configs.[].stage.values.[].secret` | Path to Vault K/V value containing the value. I.e `kv-backend/kv-name/kv-value-name`
+`configs.[].stage.tests` | Array of test scripts to run as part of staging tests
+`configs.[].stage.tests.[].image` | Docker image to use
+`configs.[].stage.tests.[].shell` | Shell to use for running the script
+`configs.[].stage.tests.[].script` | Path to script file to run relative to current workspace
+`configs.[].prod.values` | Array of override values for prod stage. Can be straight values, or references to a value from Vault K/V.
+`configs.[].prod.values.[].key` | Name of helm value. I.e. `some.key.somewhere`
+`configs.[].prod.values.[].value` | Value to use
+`configs.[].prod.values.[].secret` | Path to Vault K/V value containing the value. I.e `kv-backend/kv-name/kv-value-name`
 
 #### test 
 
 Addtitional test stage actions
 
 Setting | Description
---- | ---
-test.beforeScript | Script info to execute before test deployment
-test.beforeScript.image | Docker image to use for running the script
-test.beforeScript.shell | Shell to use for running the script
-test.beforeScript.script | Path to script file to run relative to current workspace
-test.afterScript | Script info to execute after test namespace is destroyed
-test.afterScript.image | Docker image to use for running the script
-test.afterScript.shell | Shell to use for running the script
-test.afterScript.script | Path to script file to run relative to current workspace
+| :--- | :---: |
+`test.beforeScript` | Script info to execute before test deployment
+`test.beforeScript.image` | Docker image to use for running the script
+`test.beforeScript.shell`| Shell to use for running the script
+`test.beforeScript.script` | Path to script file to run relative to current workspace
+`test.afterScript` | Script info to execute after test namespace is destroyed
+`test.afterScript.image` | Docker image to use for running the script
+`test.afterScript.shell` | Shell to use for running the script
+`test.afterScript.script` | Path to script file to run relative to current workspace
 
 #### stage 
 
 Addtitional staging stage actions
 
 Setting | Description
---- | ---
-stage.beforeScript | Script info to execute before staging deployment
-stage.beforeScript.image | Docker image to use for running the script
-stage.beforeScript.shell | Shell to use for running the script
-stage.beforeScript.script | Path to script file to run relative to current workspace
-stage.afterScript | Script info to execute afrter staging deployment
-stage.afterScript.image | Docker image to use for running the script
-stage.afterScript.shell | Shell to use for running the script
-stage.afterScript.script | Path to script file to run relative to current workspace
-stage.deploy | deploy to stage, true or false. False by default
+| :--- | :---: |
+`stage.beforeScript` | Script info to execute before staging deployment
+`stage.beforeScript.image` | Docker image to use for running the script
+`stage.beforeScript.shell` | Shell to use for running the script
+`stage.beforeScript.script` | Path to script file to run relative to current workspace
+`stage.afterScript` | Script info to execute afrter staging deployment
+`stage.afterScript.image` | Docker image to use for running the script
+`stage.afterScript.shell` | Shell to use for running the script
+`stage.afterScript.script` | Path to script file to run relative to current workspace
+`stage.deploy` | deploy to stage, true or false. False by default
 
 #### prod 
 
 Addtitional prod stage actions
 
 Setting | Description
---- | ---
-prod.beforeScript | Script info to execute before prod deployment
-prod.beforeScript.image | Docker image to use for running the script
-prod.beforeScript.shell | Shell to use for running the script
-prod.beforeScript.script | Path to script file to run relative to current workspace
-prod.afterScript | Script info to execute before prod deployment
-prod.afterScript.image | Docker image to use for running the script
-prod.afterScript.shell | Shell to use for running the script
-prod.afterScript.script | Path to script file to run relative to current workspace
-prod.doDeploy | Perform prod deployment condition. `none` - never. `versionfile` - only if versionfile changed. `auto` - always
+| :--- | :---: |
+`prod.beforeScript` | Script info to execute before prod deployment
+`prod.beforeScript.image` | Docker image to use for running the script
+`prod.beforeScript.shell` | Shell to use for running the script
+`prod.beforeScript.script` | Path to script file to run relative to current workspace
+`prod.afterScript` | Script info to execute before prod deployment
+`prod.afterScript.image` | Docker image to use for running the script
+`prod.afterScript.shell` | Shell to use for running the script
+`prod.afterScript.script` | Path to script file to run relative to current workspace
+`prod.doDeploy` | Perform prod deployment condition. `none` - never. `versionfile` - only if versionfile changed. `auto` - always
 
 ### Pipeline yaml example
 
@@ -551,14 +692,14 @@ I.e. if you use `quay.io/myimage` for your global `beforeScript` and end up inst
 The following environment variables are injected into all userscript containers:
 
 | Variable |  Purpose |  Example | 
-|---       |---       |---       |
-| PIPELINE_PROD_NAMESPACE | Production kubernetes namespace | `prod` |
-| PIPELINE_STAGE_NAMESPACE | Staging kubernetes namespace | `staging` |
-| PIPELINE_TEST_NAMESPACE | Ephemeral test kubernetes namespace | `test-pr-6-jenkins` |
-| PIPELINE_BUILD_ID | Jenkins build id | `1` |
-| PIPELINE_JOB_NAME | Jenksins job name | `test/PR-6` |
-| PIPELINE_BUILD_NUMBER | Jenksins build number | `1` |
-| PIPELINE_WORKSPACE | Path to Jenkins workspace in the container | `/home/jenkins/workspace/test_PR-6-U5VHDHDXSBXPPAUMV2CWOZMLZN63RMD3TNPQVTEDDUQI553ZSCRA` |
+|:---       |:---:     |:---:    |
+| `PIPELINE_PROD_NAMESPACE` | Production kubernetes namespace | `prod` |
+| `PIPELINE_STAGE_NAMESPACE` | Staging kubernetes namespace | `staging` |
+| `PIPELINE_TEST_NAMESPACE` | Ephemeral test kubernetes namespace | `test-pr-6-jenkins` |
+| `PIPELINE_BUILD_ID` | Jenkins build id | `1` |
+| `PIPELINE_JOB_NAME` | Jenksins job name | `test/PR-6` |
+| `PIPELINE_BUILD_NUMBER` | Jenksins build number | `1` |
+| `PIPELINE_WORKSPACE` | Path to Jenkins workspace in the container | `/home/jenkins/workspace/test_PR-6-U5VHDHDXSBXPPAUMV2CWOZMLZN63RMD3TNPQVTEDDUQI553ZSCRA` |
 
 ## Pipeline flow
 
@@ -573,93 +714,5 @@ Pipeline versions charts with SemVer metadata added to the version and will resu
 If your chart uses label values templated like `"chart: {{.Chart.Name }}-{{ .Chart.Version }}"` you will end up with a lable value that is invalid, due to the `+` character, or is too long.
 
 Use something like `chart: {{ printf "%s-%s" .Chart.Name .Chart.Version | replace "+" "_" | trunc 63 }}` instead.
-
-### Conversion from solas
-
-* Add a config for your gihub repository to `https://github.com/samsung-cnct/pipeline-jobs/tree/master/configs` and create a PR.
-* Make sure `Chart.yaml` is not in your `.gitignore` file
-* Create `rootfs/your-docker-image-name` and `charts/your-chart-name` folders in the rootof your git repo
-* Move all the chart files from `/your-chart-name` to `charts/your-chart-name`
-* Move `/build/Chart.yaml.in` to `charts/your-chart-name/Chart.yaml`
-* Add a real chart version to `charts/your-chart-name/Chart.yaml`. Actual version number doesn't matter too much as you will set the base version in `.versionfile`
-* Move the `Dockerfile` and whatever otherfiles the docker build context will need from `github.com/samsung-cnct/your-project-container` to `rootfs/your-docker-image-name/`
-* Create `.versionfile` in the root of your repository. Put a real base version number in the file in `Major.Minor.Build` format.
-* Make sure chart templates don't use `.Chart.Version` directly (see [Problems with chart labels](#problems-with-chart-labels))
-* Change `values.yaml` and chart if needed:
-
-Whatever values.yaml structure you have picked for your chart, there is only one requirement - the docker image and docker image tag need to be a single value. I.e., lets say you have the following section in your chart's `values.yaml`
-
-```
-service: mychart
-images:
-  myimage: quay.io/samsung-cnct/my-image
-  mytag: 1.1.1
-  pullPolicy: Always
-config:
-  other: value
-```
-
-You will have to change your chart to work with:
-
-```
-service: mychart
-images:
-  myimage: quay.io/samsung-cnct/my-image:1.1.1
-  pullPolicy: Always
-config:
-  other: value
-```
-
-* Create `pipeline.yaml` file in the root of your repository. 
-* Fill out `pipeline.yaml`
-
-The important sections are:
-
-```
-type: chart
-rootfs:
-  - image: samsung-cnct/my-image        # docker image name. DO NOT include the registry name (quay.io part)
-    context: your-docker-image-name     # folder containing the Dockerfile under ./rootfs
-    chart: your-chart-name              # folder containing the chart files under ./charts
-    value: images.myimage               # YAML path to the value referring to docker image name in your-chart-name values.yaml
-configs:
-  - chart: your-chart-name              # folder containing the chart files under ./charts 
-    release: your-helm-release-name     # name of the helm release for your-chart-name
-    test: 
-      values:
-        - key: config.other             # YAML path to the value referring to the value you want to override
-          value: override-value         # value to override with
-    stage: 
-      values:
-    ...
-    prod:
-      values:
-prod:
-  doDeploy: versionfile                 # set to 'versionfile' to deploy to prod when .versionfile changes. Set to 'auto' to continously deploy on every merged change. Set to 'none' to never deploy to prod
-```
-
-YAML path is simply a dot-path to a yaml value. For the following snippet:
-
-
-```
-service: mychart
-images:
-  myimage: quay.io/samsung-cnct/my-image:1.1.1
-  pullPolicy: Always
-config:
-  other: value
-```
-
-YAML path to `myimage` is `images.myimage`. YAML path to `other` is `config.other`.
-
-Value overrides translate to `--set` directives to `helm install` and `helm upgrade`. For the following snippet:
-
-```
-values:
-  - key: config.other 
-    value: override-value
-```
-
-pipeline will run `helm install ... --set config.other='override-value'`
 
 
