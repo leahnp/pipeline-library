@@ -107,7 +107,7 @@ prod:                                     # prod environment options
 Add a `Major.Minor.Build` string to `.versionfile`:
 
 ```
-0.0.1
+0.1.0
 ```
 
 ## Edit your Dockerfile
