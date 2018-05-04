@@ -40,4 +40,11 @@ docker:
   testTag: test
   stageTag: staging
   prodTag: prod
+packages:
+  - rootfs
+  - build
+deployments:
+  - charts
+  - deployments
+  - deployments/helm
 

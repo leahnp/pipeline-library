@@ -68,6 +68,49 @@ Create a Github repository with the following folder structure, substituting you
     └── helloWorld.go
 ```
 
+or 
+
+```
+.
+├── .versionfile
+├── README.md
+├── deployments
+│   └── MY-CHART-NAME
+│       ├── .helmignore
+│       ├── Chart.yaml
+│       ├── templates
+│       │   └── chart templates here
+│       └── values.yaml
+├── pipeline.yaml
+├── build
+│   └── MY-CHART-IMAGE
+│       └── Dockerfile
+└── src
+    └── helloWorld.go
+```
+
+or 
+
+```
+.
+├── .versionfile
+├── README.md
+├── deployments
+│   └── helm
+│       └── MY-CHART-NAME
+│           ├── .helmignore
+│           ├── Chart.yaml
+│           ├── templates
+│           │   └── chart templates here
+│           └── values.yaml
+├── pipeline.yaml
+├── build
+│   └── MY-CHART-IMAGE
+│       └── Dockerfile
+└── src
+    └── helloWorld.go
+```
+
 ## Edit the values.yaml file
 
 Edit the `values.yaml` for your chart, to make sure it is compatible with how the pipeline treats chart docker images.  
@@ -89,7 +132,7 @@ Edit the `pipeline.yaml` file:
 type: chart
 rootfs:                                   # image building configuration
  - image: samsung_cnct/MY-CHART-IMAGE     # do not include 'quay.io' part
-   context: MY-CHART-IMAGE                # folder name under rootfs folder
+   context: MY-CHART-IMAGE                # folder name under rootfs (or build) folder
    dockerContext: .                       # docker build context, relative to root of github repository
    chart: MY-CHART-NAME                   # name of the chart in Chart.yaml
    value: images.myMainImage              # yaml path to docker image value in values.yaml of MY-CHART-NAME chart
@@ -161,9 +204,9 @@ Add the jenkins job badge to your repo README.md:
 * Make sure `Chart.yaml` is not in your `.gitignore` file
 * Create `rootfs/your-docker-image-name` and `charts/your-chart-name` folders in the rootof your git repo
 * Move all the chart files from `/your-chart-name` to `charts/your-chart-name`
-* Move `/build/Chart.yaml.in` to `charts/your-chart-name/Chart.yaml`
+* Move `/build/Chart.yaml.in` to `charts/your-chart-name/Chart.yaml` or `deployments/your-chart-name/Chart.yaml` or `deployments/helm/your-chart-name/Chart.yaml`
 * Add a real chart version to `charts/your-chart-name/Chart.yaml`. Actual version number doesn't matter too much as you will set the base version in `.versionfile`
-* Move the `Dockerfile` and whatever otherfiles the docker build context will need from `github.com/samsung-cnct/your-project-container` to `rootfs/your-docker-image-name/`
+* Move the `Dockerfile` and whatever otherfiles the docker build context will need from `github.com/samsung-cnct/your-project-container` to `rootfs/your-docker-image-name/` or `build/your-docker-image-name/`
 * Create `.versionfile` in the root of your repository. Put a real base version number in the file in `Major.Minor.Build` format.
 * Make sure chart templates don't use `.Chart.Version` directly (see [Problems with chart labels](#problems-with-chart-labels))
 * Change `values.yaml` and chart if needed:
@@ -198,12 +241,12 @@ The important sections are:
 
 ```
 type: chart
-rootfs:
+builds:                                 # 'rootfs' is equivalent to 'builds'
   - image: samsung-cnct/my-image        # docker image name. DO NOT include the registry name (quay.io part)
     context: your-docker-image-name     # folder containing the Dockerfile under ./rootfs
     chart: your-chart-name              # folder containing the chart files under ./charts
     value: images.myimage               # YAML path to the value referring to docker image name in your-chart-name values.yaml
-configs:
+deployments:                            # 'configs' is equivalent to 'deployments'
   - chart: your-chart-name              # folder containing the chart files under ./charts 
     release: your-helm-release-name     # name of the helm release for your-chart-name
     test: 
@@ -314,6 +357,8 @@ Setting | Description
 `docker.testTag` | Additonal tag for test stage images
 `docker.stageTag` | Additonal tag for staging stage images 
 `docker.prodTag` | Additonal tag for prod stage images
+`docker.packages` | Supported locations for dockerfile subfolders, relative to workspace root
+`docker.deployments` | Supported locations for chart subfolders, relative to workspace root
 
 Example:
 
@@ -514,6 +559,7 @@ Array of images to be built under `rootfs` folder, and how they relate to Helm v
 Setting | Description
 | :--- | :---: |
 `rootfs` | Array of rootfs objects
+`builds` | Equivalent to `rootfs`
 `rootfs.[].image` | image to build, without the `:tag`
 `rootfs.[].buildArgs` | Array of build arg objects for the image
 `rootfs.[].buildArgs.[].arg` | arg name
@@ -532,6 +578,7 @@ Pipeline stage configurations
 Setting | Description
 | :--- | :---: |
 `configs` | Array of pipeline stage configurations objects
+`deployments` | Equivalent to `configs`
 `configs.[].chart` | Chart name under `charts`
 `configs.[].timeout` | Helm timeout for things like helm tests
 `configs.[].retries` | Humber of retries for things like helm tests
@@ -623,14 +670,14 @@ envValues:
     value: THIS-IS-A-DUMMY-PLAIN-VAR-FOR-TESTING
 slack:
   channel: #team-migrations
-rootfs:
+builds:
   - image: maratoid/pipeline-busybox
     buildArgs: 
       TEST_ARG: "something not default"
     context: pipeline-busybox
     chart: pipeline-busybox
     value: images.image
-configs:
+deployments:
   - chart: pipeline-busybox
     timeout: 600
     retries: 2

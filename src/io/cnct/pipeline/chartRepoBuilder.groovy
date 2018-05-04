@@ -92,7 +92,7 @@ def postCleanup(err) {
             if (err) {
               def helmCleanSteps = [:] 
 
-              for (chart in pipeline.configs) {
+              for (chart in pipeline.deployments) {
                 if (chart.chart) {
                   def commandString = "helm delete ${chart.release}-${kubeName(env.JOB_NAME)} --purge --tiller-namespace ${pipeline.helm.namespace} || true"
                   helmCleanSteps["${chart.chart}-deploy-test"] = { sh(commandString) }
@@ -269,7 +269,7 @@ def runPR() {
       // run before scripts
       executeUserScript('Executing global \'before\' scripts', pipeline.beforeScript)
 
-      rootFsTestHandler(scmVars)
+      buildsTestHandler(scmVars)
       chartLintHandler(scmVars)
 
       deployToTestHandler(scmVars)
@@ -277,7 +277,7 @@ def runPR() {
       testTestHandler(scmVars)
       destroyHandler(scmVars)
       
-      rootFsStageHandler(scmVars)
+      buildsStageHandler(scmVars)
       deployToStageHandler(scmVars)
       stageTestHandler(scmVars)
 
@@ -305,7 +305,7 @@ def runMerge() {
       // run before scripts
       executeUserScript('Executing global \'before\' scripts', pipeline.beforeScript)
 
-      rootFsProdHandler(scmVars)
+      buildsProdHandler(scmVars)
       chartProdHandler(scmVars)
       deployToProdHandler(scmVars)
       chartProdVersion(scmVars)
@@ -316,11 +316,11 @@ def runMerge() {
   }
 }
 
-// Build changed rootfs folders 
+// Build changed builds folders 
 // Tag with commit sha
 // Tag with a test tag
 // then push to repo
-def rootFsTestHandler(scmVars) {
+def buildsTestHandler(scmVars) {
   def gitCommit = scmVars.GIT_COMMIT
   def chartsWithContainers = []
 
@@ -333,7 +333,7 @@ def rootFsTestHandler(scmVars) {
   // get tag text
   def useTag = makeDockerTag(defaults, gitCommit)
 
-  for (container in pipeline.rootfs) {
+  for (container in pipeline.builds) {
     // build steps
     def buildCommandString = "docker build -t\
       ${defaults.docker.registry}/${container.image}:${useTag} --pull " 
@@ -367,7 +367,7 @@ def rootFsTestHandler(scmVars) {
 
       buildCommandString += mapToParams('--build-arg', argMap)
     }
-    buildCommandString += " ${container.dockerContext} --file rootfs/${container.context}/Dockerfile"
+    buildCommandString += " ${container.dockerContext} --file ${dockerfileLocation(defaults, container.context)}"
 
     parallelBuildSteps["${container.image.replaceAll('/','_')}-build"] = { sh(buildCommandString) }
 
@@ -405,16 +405,16 @@ def rootFsTestHandler(scmVars) {
 
       // process values yamls for modified charts
       // modify the appropriate image objects under values yaml to point to the newly tagged image
-      // write back to values.yaml and stash
-      for (chart in chartsWithContainers) {
-        def valuesYaml = parseYaml(readFile("${pwd()}/charts/${chart.chart}/values.yaml"))
+      // write back to values.yaml and stash 
+      for (chart in chartsWithContainers) { 
+        def valuesYaml = parseYaml(readFile("${pwd()}/${chartLocation(defaults, chart.chart)}/values.yaml"))
 
         mapValueByPath(chart.value, valuesYaml, "${defaults.docker.registry}/${chart.image}:${useTag}")
-        toYamlFile(valuesYaml, "${pwd()}/charts/${chart.chart}/values.yaml")
+        toYamlFile(valuesYaml, "${pwd()}/${chartLocation(defaults, chart.chart)}/values.yaml")
 
         stash(
           name: "${chart.chart}-values-${env.BUILD_ID}".replaceAll('-','_'),
-          includes: "charts/${chart.chart}/values.yaml"
+          includes: "${chartLocation(defaults, chart.chart)}/values.yaml"
         )
       }
     }
@@ -423,7 +423,7 @@ def rootFsTestHandler(scmVars) {
 
 // Tag changed repos with a stage tag
 // then push to repo
-def rootFsStageHandler(scmVars) {
+def buildsStageHandler(scmVars) {
   def gitCommit = scmVars.GIT_COMMIT
   def chartsWithContainers = []
 
@@ -435,7 +435,7 @@ def rootFsStageHandler(scmVars) {
   // get tag text
   def useTag = makeDockerTag(defaults, gitCommit)
 
-  for (container in pipeline.rootfs) {
+  for (container in pipeline.builds) {
     // tag steps
     def tagCommandString = "docker tag ${defaults.docker.registry}/${container.image}:${useTag} \
      ${defaults.docker.registry}/${container.image}:${defaults.docker.stageTag}"
@@ -467,23 +467,23 @@ def rootFsStageHandler(scmVars) {
       // modify the appropriate image objects under values yaml to point to the newly tagged image
       // write back to values.yaml and stash
       for (chart in chartsWithContainers) {
-        def valuesYaml = parseYaml(readFile("${pwd()}/charts/${chart.chart}/values.yaml"))
+        def valuesYaml = parseYaml(readFile("${pwd()}/${chartLocation(defaults, chart.chart)}/values.yaml"))
 
         mapValueByPath(chart.value, valuesYaml, "${defaults.docker.registry}/${chart.image}:${useTag}")
-        toYamlFile(valuesYaml, "${pwd()}/charts/${chart.chart}/values.yaml")
+        toYamlFile(valuesYaml, "${pwd()}/${chartLocation(defaults, chart.chart)}/values.yaml")
 
         stash(
           name: "${chart.chart}-values-${env.BUILD_ID}".replaceAll('-','_'),
-          includes: "charts/${chart.chart}/values.yaml"
+          includes: "${chartLocation(defaults, chart.chart)}/values.yaml"
         )
       }
     }
   }
 }
 
-// tag changed rootfs folders with prod tag
+// tag changed builds folders with prod tag
 // then push to repo
-def rootFsProdHandler(scmVars) {
+def buildsProdHandler(scmVars) {
   def gitCommit = scmVars.GIT_COMMIT
   def chartsWithContainers = []
 
@@ -498,8 +498,8 @@ def rootFsProdHandler(scmVars) {
 
   // Collect all the docker build steps as 'docker build' command string
   // for later execution in parallel
-  // Also memoize the rootfs objects, if they are connected to in-repo charts
-  for (container in pipeline.rootfs) {
+  // Also memoize the builds objects, if they are connected to in-repo charts
+  for (container in pipeline.builds) {
     // build steps
     def buildCommandString = "docker build -t \
       ${defaults.docker.registry}/${container.image}:${useTag} --pull " 
@@ -533,7 +533,7 @@ def rootFsProdHandler(scmVars) {
       
       buildCommandString += mapToParams('--build-arg', argMap)
     }
-    buildCommandString += " ${container.dockerContext} --file rootfs/${container.context}/Dockerfile"
+    buildCommandString += " ${container.dockerContext} --file ${dockerfileLocation(defaults, container.context)}"
     parallelBuildSteps["${container.image.replaceAll('/','_')}-build"] = { sh(buildCommandString) }
 
     def tagCommandString = "docker tag ${defaults.docker.registry}/${container.image}:${useTag} \
@@ -569,14 +569,14 @@ def rootFsProdHandler(scmVars) {
       // modify the appropriate image objects under values yaml to point to the newly tagged image
       // write back to values.yaml and stash
       for (chart in chartsWithContainers) {
-        def valuesYaml = parseYaml(readFile("${pwd()}/charts/${chart.chart}/values.yaml"))
+        def valuesYaml = parseYaml(readFile("${pwd()}/${chartLocation(defaults, chart.chart)}/values.yaml"))
 
         mapValueByPath(chart.value, valuesYaml, "${defaults.docker.registry}/${chart.image}:${useTag}")
-        toYamlFile(valuesYaml, "${pwd()}/charts/${chart.chart}/values.yaml")
+        toYamlFile(valuesYaml, "${pwd()}/${chartLocation(defaults, chart.chart)}/values.yaml")
 
         stash(
           name: "${chart.chart}-values-${env.BUILD_ID}".replaceAll('-','_'),
-          includes: "charts/${chart.chart}/values.yaml"
+          includes: "${chartLocation(defaults, chart.chart)}/values.yaml"
         )
       }
     }
@@ -591,10 +591,10 @@ def chartLintHandler(scmVars) {
 
   // read in all appropriate versionfiles and replace Chart.yaml versions 
   // this will verify that version files had helm-valid version numbers during linting step
-  for (chart in pipeline.configs) { 
+  for (chart in pipeline.deployments) { 
     if (chart.chart) {
       // load chart yaml
-      def chartYaml = parseYaml(readFile("${pwd()}/charts/${chart.chart}/Chart.yaml"))
+      def chartYaml = parseYaml(readFile("${pwd()}/${chartLocation(defaults, chart.chart)}/Chart.yaml"))
 
       // build new chart version
       def verComponents = []
@@ -610,23 +610,23 @@ def chartLintHandler(scmVars) {
       
       chartYaml.version = verComponents.join('+')
 
-      toYamlFile(chartYaml, "${pwd()}/charts/${chart.chart}/Chart.yaml")
+      toYamlFile(chartYaml, "${pwd()}/${chartLocation(defaults, chart.chart)}/Chart.yaml")
 
       // stash the Chart.yaml
       stash(
         name: "${chart.chart}-chartyaml-${env.BUILD_ID}".replaceAll('-','_'),
-        includes: "charts/${chart.chart}/Chart.yaml"
+        includes: "${chartLocation(defaults, chart.chart)}/Chart.yaml"
       )
 
-      // grab current config object that is applicable to test section from all configs
-      def commandString = "helm lint charts/${chart.chart}"
+      // grab current config object that is applicable to test section from all deployments
+      def commandString = "helm lint ${chartLocation(defaults, chart.chart)}"
       parallelLintSteps["${chart.chart}-lint"] = { sh(commandString) }
     } 
   }
 
   container('helm') {
     stage('Linting charts') {
-      for (chart in pipeline.configs) {
+      for (chart in pipeline.deployments) {
         // unstash chart yaml changes
         unstashCheck("${chart.chart}-chartyaml-${env.BUILD_ID}".replaceAll('-','_'))
 
@@ -646,11 +646,11 @@ def chartProdHandler(scmVars) {
   
   container('helm') {
     stage('Preparing chart for prod') {
-      for (chart in pipeline.configs) {
+      for (chart in pipeline.deployments) {
         if (chart.chart) {
 
           // load chart yaml
-          def chartYaml = parseYaml(readFile("${pwd()}/charts/${chart.chart}/Chart.yaml"))
+          def chartYaml = parseYaml(readFile("${pwd()}/${chartLocation(defaults, chart.chart)}/Chart.yaml"))
 
           // build new chart version
           def verComponents = []
@@ -665,12 +665,12 @@ def chartProdHandler(scmVars) {
           verComponents[0] = versionFileContents + "-prod.${env.BUILD_NUMBER}"
 
           chartYaml.version = verComponents.join('+')
-          toYamlFile(chartYaml, "${pwd()}/charts/${chart.chart}/Chart.yaml")
+          toYamlFile(chartYaml, "${pwd()}/${chartLocation(defaults, chart.chart)}/Chart.yaml")
 
           // stash the Chart.yaml
           stash(
             name: "${chart.chart}-chartyaml-${env.BUILD_ID}".replaceAll('-','_'),
-            includes: "charts/${chart.chart}/Chart.yaml"
+            includes: "${chartLocation(defaults, chart.chart)}/Chart.yaml"
           )
 
           // unstash values changes if applicable
@@ -693,8 +693,8 @@ def chartProdHandler(scmVars) {
                 }
 
                 helmCommand = """${helmCommand}
-                  helm dependency update --debug charts/${chart.chart}
-                  helm package --debug charts/${chart.chart}
+                  helm dependency update --debug ${chartLocation(defaults, chart.chart)}
+                  helm package --debug ${chartLocation(defaults, chart.chart)}
                   curl -u ${registryUser}:${registryPass} --data-binary @${chart.chart}-${chartYaml.version}.tgz https://${defaults.helm.registry}/api/charts"""
 
                 sh(helmCommand)
@@ -718,7 +718,7 @@ def deployToTestHandler(scmVars) {
   container('helm') {
     stage('Deploying to test namespace') {
       def deploySteps = [:]
-      for (chart in pipeline.configs) {
+      for (chart in pipeline.deployments) {
         if (chart.chart) {
           // unstash chart yaml if applicable
           unstashCheck("${chart.chart}-chartyaml-${env.BUILD_ID}".replaceAll('-','_'))
@@ -737,9 +737,9 @@ def deployToTestHandler(scmVars) {
           }
 
           commandString = """${commandString}
-          helm dependency update --debug charts/${chart.chart}
-          helm package --debug charts/${chart.chart}
-          helm install charts/${chart.chart} --tiller-namespace ${pipeline.helm.namespace} --namespace ${kubeName(env.JOB_NAME)} --name ${chart.release}-${kubeName(env.JOB_NAME)} """
+          helm dependency update --debug ${chartLocation(defaults, chart.chart)}
+          helm package --debug ${chartLocation(defaults, chart.chart)}
+          helm install ${chartLocation(defaults, chart.chart)} --tiller-namespace ${pipeline.helm.namespace} --namespace ${kubeName(env.JOB_NAME)} --name ${chart.release}-${kubeName(env.JOB_NAME)} """
 
           
           def setParams = envMapToSetParams(chart.test.values)
@@ -765,7 +765,7 @@ def deployToStageHandler(scmVars) {
     container('helm') {
       stage('Deploying to stage namespace') {
         def deploySteps = [:]
-        for (chart in pipeline.configs) {
+        for (chart in pipeline.deployments) {
           if (chart.chart) {
             // unstash chart yaml if applicable
             unstashCheck("${chart.chart}-chartyaml-${env.BUILD_ID}".replaceAll('-','_'))
@@ -777,8 +777,8 @@ def deployToStageHandler(scmVars) {
             def commandString = """
             set +x
             helm init --client-only
-            helm dependency update --debug charts/${chart.chart}
-            helm upgrade --install --tiller-namespace ${pipeline.helm.namespace} --namespace ${defaults.stageNamespace} ${chart.release}-${defaults.stageNamespace} charts/${chart.chart}""" 
+            helm dependency update --debug ${chartLocation(defaults, chart.chart)}
+            helm upgrade --install --tiller-namespace ${pipeline.helm.namespace} --namespace ${defaults.stageNamespace} ${chart.release}-${defaults.stageNamespace} ${chartLocation(defaults, chart.chart)}""" 
             
             def setParams = envMapToSetParams(chart.stage.values)
             commandString += setParams
@@ -801,7 +801,7 @@ def deployToProdHandler(scmVars) {
   container('helm') {
     def deploySteps = [:]
     stage('Deploying to prod namespace') {
-      for (chart in pipeline.configs) {
+      for (chart in pipeline.deployments) {
         if (chart.chart) {
 
           // unstash chart yaml changes if applicable
@@ -810,7 +810,7 @@ def deployToProdHandler(scmVars) {
           // unstash values changes if applicable
           unstashCheck("${chart.chart}-values-${env.BUILD_ID}".replaceAll('-','_'))
 
-          chartYaml = parseYaml(readFile("${pwd()}/charts/${chart.chart}/Chart.yaml"))
+          chartYaml = parseYaml(readFile("${pwd()}/${chartLocation(defaults, chart.chart)}/Chart.yaml"))
 
           // determine if we need to deploy
           def doDeploy = false
@@ -833,7 +833,7 @@ def deployToProdHandler(scmVars) {
             }
 
             commandString = """${commandString}
-            helm dependency update --debug charts/${chart.chart}
+            helm dependency update --debug ${chartLocation(defaults, chart.chart)}
             helm upgrade --install --tiller-namespace ${pipeline.helm.namespace} --repo https://${defaults.helm.registry} --version ${chartYaml.version} --namespace ${defaults.prodNamespace} ${chart.release} ${chart.chart} """
             
             def setParams = envMapToSetParams(chart.prod.values)
@@ -857,13 +857,13 @@ def chartProdVersion(scmVars) {
   
   container('helm') {
     stage('Preparing chart for production version') {
-      for (chart in pipeline.configs) {
+      for (chart in pipeline.deployments) {
         if (chart.chart) {
 
           // load chart yaml
-          def chartYaml = parseYaml(readFile("${pwd()}/charts/${chart.chart}/Chart.yaml"))
+          def chartYaml = parseYaml(readFile("${pwd()}/${chartLocation(defaults, chart.chart)}/Chart.yaml"))
           chartYaml.version = versionFileContents
-          toYamlFile(chartYaml, "${pwd()}/charts/${chart.chart}/Chart.yaml")
+          toYamlFile(chartYaml, "${pwd()}/${chartLocation(defaults, chart.chart)}/Chart.yaml")
 
           // unstash values changes if applicable
           unstashCheck("${chart.chart}-values-${env.BUILD_ID}".replaceAll('-','_'))
@@ -885,8 +885,8 @@ def chartProdVersion(scmVars) {
                 }
 
                 helmCommand = """${helmCommand}
-                  helm dependency update --debug charts/${chart.chart}
-                  helm package --debug charts/${chart.chart}
+                  helm dependency update --debug ${chartLocation(defaults, chart.chart)}
+                  helm package --debug ${chartLocation(defaults, chart.chart)}
                   curl -u ${registryUser}:${registryPass} --data-binary @${chart.chart}-${chartYaml.version}.tgz https://${defaults.helm.registry}/api/charts"""
 
                 sh(helmCommand)
@@ -904,7 +904,7 @@ def chartProdVersion(scmVars) {
 def helmTestHandler(scmVars) {
   container('helm') {
     stage('Running helm tests') {
-      for (chart in pipeline.configs) {
+      for (chart in pipeline.deployments) {
         if (chart.chart) {
           def commandString = """
           helm test --tiller-namespace ${pipeline.helm.namespace} --timeout ${chart.timeout} ${chart.release}-${kubeName(env.JOB_NAME)}
@@ -933,7 +933,7 @@ def helmTestHandler(scmVars) {
 // run test tests
 def testTestHandler(scmVars) {
 
-  for (config in pipeline.configs) {
+  for (config in pipeline.deployments) {
     if (config.test.tests) {
       for (test in config.test.tests) {
         executeUserScript('Executing test test scripts', test)
@@ -947,7 +947,7 @@ def testTestHandler(scmVars) {
 // run staging tests
 def stageTestHandler(scmVars) {
 
-  for (config in pipeline.configs) {
+  for (config in pipeline.deployments) {
     if (config.stage.tests) {
       for (test in config.stage.tests) {
         executeUserScript('Executing staging test scripts', test)
@@ -968,7 +968,7 @@ def destroyHandler(scmVars) {
       echo("Contents of ${kubeName(env.JOB_NAME)} namespace:")
       sh("kubectl describe all --namespace ${kubeName(env.JOB_NAME)}")
       
-      for (chart in pipeline.configs) {
+      for (chart in pipeline.deployments) {
         if (chart.chart) {
           def commandString = "helm delete ${chart.release}-${kubeName(env.JOB_NAME)} --purge --tiller-namespace ${pipeline.helm.namespace}"
           destroySteps["${chart.release}-${kubeName(env.JOB_NAME)}"] = { sh(commandString) }
@@ -1055,7 +1055,7 @@ def getScriptImages() {
         shell: pipeline.stage.beforeScript.shell])
     }
 
-    for (config in pipeline.configs) {
+    for (config in pipeline.deployments) {
       for (test in config.test.tests) {
         check(scriptContainers, [name: containerName(test.image),
           image: test.image,
