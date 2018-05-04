@@ -43,6 +43,7 @@ docker:
 packages:
   - rootfs
   - build
+  - build/docker
 deployments:
   - charts
   - deployments

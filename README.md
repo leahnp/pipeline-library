@@ -111,6 +111,29 @@ or
     └── helloWorld.go
 ```
 
+or 
+
+```
+.
+├── .versionfile
+├── README.md
+├── deployments
+│   └── helm
+│       └── MY-CHART-NAME
+│           ├── .helmignore
+│           ├── Chart.yaml
+│           ├── templates
+│           │   └── chart templates here
+│           └── values.yaml
+├── pipeline.yaml
+├── build
+│   └── docker
+│       └── MY-CHART-IMAGE
+│           └── Dockerfile
+└── src
+    └── helloWorld.go
+```
+
 ## Edit the values.yaml file
 
 Edit the `values.yaml` for your chart, to make sure it is compatible with how the pipeline treats chart docker images.  
