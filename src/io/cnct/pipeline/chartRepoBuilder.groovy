@@ -1124,25 +1124,34 @@ def createCertificate(namespace) {
     return
   }
 
-  def issuerName
+  def defaultIssuerName
   switch (namespace) {
     case defaults.stageNamespace:
-      issuerName = defaults.tls.stagingIssuer
+      defaultIssuerName = defaults.tls.stagingIssuer
       break
     case defaults.prodNamespace:
-      issuerName = defaults.tls.prodIssuer
+      defaultIssuerName = defaults.tls.prodIssuer
       break
     default:
       error("Unrecognized namespace ${namespace}")
       break
   }  
 
-  // try to cleanup previous cert first
-  sh("kubectl delete Certificate ${pipeline.tls.name} --namespace ${namespace} || true")
+  for (tlsConf in pipeline.tls[namespace]) {
+    // try to cleanup previous cert first
+    sh("kubectl delete Certificate ${tlsConf.name} --namespace ${namespace} || true")
 
-  def cert = createCertificate(pipeline.tls[namespace], issuerName, defaults.tls.ingress)
-  toYamlFile(cert, "${pwd()}/cert.yaml")
-  sh("kubectl create -f ${pwd()}/cert.yaml --namespace ${namespace}")
+    // create cert object, write to file, and install into cluster
+    def cert
+    if (tlsConf.issuer) {
+      cert = createCertificate(tlsConf, tlsConf.issuer, defaults.tls.ingress)
+    } else {
+      cert = createCertificate(tlsConf, defaultIssuerName, defaults.tls.ingress)
+    }
+
+    toYamlFile(cert, "${pwd()}/${tlsConf.name}-cert.yaml")
+    sh("kubectl create -f ${pwd()}/${tlsConf.name}-cert.yaml --namespace ${namespace}")
+  }
 }
 
 return this

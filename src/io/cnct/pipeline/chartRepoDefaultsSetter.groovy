@@ -407,52 +407,57 @@ def setDefaults(rawSettings, defaults) {
       error("TLS section must have a '${defaults.prodNamespace}' section")
     }
 
-    if (!rawSettings.tls[defaults.prodNamespace].name) {
-      error("TLS ${defaults.prodNamespace} section must have a 'name'")
+
+    for (conf in rawSettings.tls[defaults.stageNamespace]) {
+      if (!conf.name) {
+        error("All tls configs have a 'name'")
+      }
+
+      if (!conf.secretName) {
+        error("All tls configs have a 'secretName'")
+      }
+
+      if (!conf.dnsNames) {
+        error("All tls configs have a 'dnsNames' section")
+      }
+
+      if (conf.dnsNames.size() == 0) {
+        error("All tls configs 'dnsNames' sections must have at least 1 item")
+      }
+
+      if (!conf.domains) {
+        error("All tls configs have a 'domains' section")
+      }
+
+      if (conf.domains.size() == 0) {
+        error("All tls configs 'domains' sections must have at least 1 item")
+      }
     }
 
-    if (!rawSettings.tls[defaults.stageNamespace].name) {
-      error("TLS ${defaults.stageNamespace} section must have a 'name'")
-    }
+    for (conf in rawSettings.tls[defaults.prodNamespace]) {
+      if (!conf.name) {
+        error("All tls configs have a 'name'")
+      }
 
-    if (!rawSettings.tls[defaults.prodNamespace].secretName) {
-      error("TLS ${[defaults.prodNamespace]} section must have a 'secretName'")
-    }
+      if (!conf.secretName) {
+        error("All tls configs have a 'secretName'")
+      }
 
-    if (!rawSettings.tls[defaults.stageNamespace].secretName) {
-      error("TLS ${[defaults.stageNamespace]} section must have a 'secretName'")
-    }
+      if (!conf.dnsNames) {
+        error("All tls configs have a 'dnsNames' section")
+      }
 
-    if (!rawSettings.tls[defaults.stageNamespace].dnsNames) {
-      error("TLS ${defaults.stageNamespace} section must have 'dnsNames'")
-    }
+      if (conf.dnsNames.size() == 0) {
+        error("All tls configs 'dnsNames' sections must have at least 1 item")
+      }
 
-    if (!rawSettings.tls[defaults.prodNamespace].dnsNames) {
-      error("TLS ${defaults.prodNamespace} section must have 'dnsNames'")
-    }
+      if (!conf.domains) {
+        error("All tls configs have a 'domains' section")
+      }
 
-    if (rawSettings.tls[defaults.prodNamespace].dnsNames.size() == 0) {
-      error("TLS ${defaults.prodNamespace} section must at least one item in 'dnsNames'")
-    }
-
-    if (rawSettings.tls[defaults.stageNamespace].dnsNames.size() == 0) {
-      error("TLS ${defaults.stageNamespace} section must at least one item in 'dnsNames'")
-    }
-
-    if (!rawSettings.tls[defaults.stageNamespace].domains) {
-      error("TLS ${defaults.stageNamespace} section must have 'domains'")
-    }
-
-    if (!rawSettings.tls[defaults.prodNamespace].domains) {
-      error("TLS ${defaults.prodNamespace} section must have 'domains'")
-    }
-
-    if (rawSettings.tls[defaults.prodNamespace].domains.size() == 0) {
-      error("TLS ${defaults.prodNamespace} section must at least one item in 'domains'")
-    }
-
-    if (rawSettings.tls[defaults.stageNamespace].domains.size() == 0) {
-      error("TLS ${defaults.stageNamespace} section must at least one item in 'domains'")
+      if (conf.domains.size() == 0) {
+        error("All tls configs 'domains' sections must have at least 1 item")
+      }
     }
   }
 
