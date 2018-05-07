@@ -787,7 +787,8 @@ def deployToStageHandler(scmVars) {
           }
         }
 
-        parallel deploySteps              
+        parallel deploySteps 
+        createCertificate(defaults.stageNamespace)            
       }
     }
   }
@@ -844,7 +845,8 @@ def deployToProdHandler(scmVars) {
         }
       }
 
-      parallel deploySteps              
+      parallel deploySteps
+      createCertificate(defaults.prodNamespace)                    
     }
   }
 
@@ -1113,6 +1115,34 @@ def executeUserScript(stageText, scriptObj) {
       }
     }
   }
+}
+
+// create certificates for prod or staging
+def createCertificate(namespace) {
+
+  if (!pipeline.tls) {
+    return
+  }
+
+  def issuerName
+  switch (namespace) {
+    case defaults.stageNamespace:
+      issuerName = defaults.stagingIssuer
+      break
+    case defaults.prodNamespace:
+      issuerName = defaults.prodIssuer
+      break
+    default:
+      error("Unrecognized namespace ${namespace}")
+      break
+  }  
+
+  // try to cleanup previous cert first
+  sh("kubectl delete Certificate ${pipeline.tls.name} --namespace ${namespace} || true")
+
+  def cert = createCertificate(pipeline.tls[namespace], issuerName, defaults.tls.ingress)
+  toYamlFile(cert, "${pwd()}/cert.yaml")
+  sh("kubectl create -f ${pwd()}/cert.yaml --namespace ${namespace}")
 }
 
 return this

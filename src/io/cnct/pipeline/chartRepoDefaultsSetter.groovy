@@ -397,6 +397,61 @@ def setDefaults(rawSettings, defaults) {
     }
   }
 
+  if (rawSettings.tls) {
+
+    if (!rawSettings.tls.name) {
+      error("TLS section must have a 'name'")
+    }
+
+    if (!rawSettings.tls[defaults.stageNamespace]) {
+      error("TLS section must have a '${defaults.stageNamespace}'")
+    }
+
+    if (!rawSettings.tls[defaults.prodNamespace]) {
+      error("TLS section must have a '${defaults.prodNamespace}' section")
+    }
+
+    if (!rawSettings.tls[defaults.prodNamespace].secretName) {
+      error("TLS ${[defaults.prodNamespace]} section must have a 'secretName'")
+    }
+
+    if (!rawSettings.tls[defaults.stageNamespace].secretName) {
+      error("TLS ${[defaults.stageNamespace]} section must have a 'secretName'")
+    }
+
+    if (!rawSettings.tls[defaults.stageNamespace].dnsNames) {
+      error("TLS ${defaults.stageNamespace} section must have 'dnsNames'")
+    }
+
+    if (!rawSettings.tls[defaults.prodNamespace].dnsNames) {
+      error("TLS ${defaults.prodNamespace} section must have 'dnsNames'")
+    }
+
+    if (rawSettings.tls[defaults.prodNamespace].dnsNames.size() == 0) {
+      error("TLS ${defaults.prodNamespace} section must at least one item in 'dnsNames'")
+    }
+
+    if (rawSettings.tls[defaults.stageNamespace].dnsNames.size() == 0) {
+      error("TLS ${defaults.stageNamespace} section must at least one item in 'dnsNames'")
+    }
+
+    if (!rawSettings.tls[defaults.stageNamespace].domains) {
+      error("TLS ${defaults.stageNamespace} section must have 'domains'")
+    }
+
+    if (!rawSettings.tls[defaults.prodNamespace].domains) {
+      error("TLS ${defaults.prodNamespace} section must have 'domains'")
+    }
+
+    if (rawSettings.tls[defaults.prodNamespace].domains.size() == 0) {
+      error("TLS ${defaults.prodNamespace} section must at least one item in 'domains'")
+    }
+
+    if (rawSettings.tls[defaults.stageNamespace].domains.size() == 0) {
+      error("TLS ${defaults.stageNamespace} section must at least one item in 'domains'")
+    }
+  }
+
   return rawSettings
 }
 

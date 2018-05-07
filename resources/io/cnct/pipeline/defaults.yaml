@@ -40,6 +40,10 @@ docker:
   testTag: test
   stageTag: staging
   prodTag: prod
+tls:
+  ingress: pipeline-nginx
+  prodIssuer: pipeline-prod-issuer
+  stagingIssuer: pipeline-staging-issuer
 packages:
   - rootfs
   - build
