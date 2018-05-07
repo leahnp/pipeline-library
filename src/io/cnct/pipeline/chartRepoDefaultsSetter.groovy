@@ -113,98 +113,209 @@ def setDefaults(rawSettings, defaults) {
   }
 
   // light checking on rootfs mappings
-  if (!rawSettings.rootfs) {
-    rawSettings.rootfs = []
+  // builds is equivalent to 'rootfs'
+  if (rawSettings.builds && rawSettings.rootfs) {
+    error("Cannot have both 'builds' and 'rootfs' sections")
   }
+  if (!rawSettings.builds && !rawSettings.rootfs) {
+    error("Have to have either a 'builds' or a 'rootfs' section")
+  }
+  
+  if (rawSettings.builds) {
+    for (entry in rawSettings.builds) {
+      if (!entry.context) {
+        error("builds items must have 'context' field")
+      }
 
-  for (entry in rawSettings.rootfs) {
-    if (!entry.context) {
-      error("rootfs items must have 'context' field")
-    }
+      if (!entry.dockerContext) {
+        entry.dockerContext = "./builds/${entry.context}"
+      }
 
-    if (!entry.dockerContext) {
-      entry.dockerContext = "./rootfs/${entry.context}"
-    }
+      if (!entry.image) {
+        error("builds items must have 'image' field")
+      }
 
-    if (!entry.image) {
-      error("rootfs items must have 'image' field")
-    }
+      if (!entry.buildArgs) {
+        entry.buildArgs = []
+      }
 
-    if (!entry.buildArgs) {
-      entry.buildArgs = []
-    }
+      for (arg in entry.buildArgs) {
+        if (!arg.arg) {
+          error("Each builds buildArg items must have 'arg' field")
+        }
+      }
 
-    for (arg in entry.buildArgs) {
-      if (!arg.arg) {
-        error("Each rootfs buildArg items must have 'arg' field")
+      if (entry.test) {
+        entry.test.image = 
+          entry.test.image ? entry.test.image : defaults.images.script
+        entry.test.shell = 
+          entry.test.shell ? entry.test.shell : 'sh'
+
+        if (!entry.test.script) {
+          entry.test = null
+        }
       }
     }
 
-    if (entry.test) {
-      entry.test.image = 
-        entry.test.image ? entry.test.image : defaults.images.script
-      entry.test.shell = 
-        entry.test.shell ? entry.test.shell : 'sh'
+    rawSettings.rootfs = rawSettings.builds
+  }
 
-      if (!entry.test.script) {
-        entry.test = null
+  if (rawSettings.rootfs) {
+    for (entry in rawSettings.rootfs) {
+      if (!entry.context) {
+        error("rootfs items must have 'context' field")
       }
-    }
-  }
 
-  // check helmConfigs
-  if (!rawSettings.configs) {
-    rawSettings.configs = []
-  }
-  for (config in rawSettings.configs) {
+      if (!entry.dockerContext) {
+        entry.dockerContext = "./rootfs/${entry.context}"
+      }
 
-    if (!config.timeout) {
-      config.timeout = defaults.timeout
-    }
+      if (!entry.image) {
+        error("rootfs items must have 'image' field")
+      }
 
-    if (!config.retries) {
-      config.retries = defaults.retries
-    }
+      if (!entry.buildArgs) {
+        entry.buildArgs = []
+      }
 
-    if (!config.test) {
-      config.test = [:]
-    }
+      for (arg in entry.buildArgs) {
+        if (!arg.arg) {
+          error("Each rootfs buildArg items must have 'arg' field")
+        }
+      }
 
-    if (!config.test.values) {
-      config.test.values = [:]
-    }
+      if (entry.test) {
+        entry.test.image = 
+          entry.test.image ? entry.test.image : defaults.images.script
+        entry.test.shell = 
+          entry.test.shell ? entry.test.shell : 'sh'
 
-    if (!config.test.tests) {
-      config.test.tests = []
-    }
-
-    if (!config.stage) {
-      config.stage = [:]
-    }
-
-    if (!config.stage.values) {
-      config.stage.values = [:]
-    }
-
-    if (!config.stage.tests) {
-      config.stage.tests = []
-    }
-
-    for (test in config.stage.tests) {
-      test.image = test.image ? test.image : defaults.images.script
-      test.shell = test.shell ? test.shell : defaults.shell
-      if (!test.script) {
-        test = null
+        if (!entry.test.script) {
+          entry.test = null
+        }
       }
     }
 
-    if (!config.prod) {
-      config.prod = [:]
+    rawSettings.builds = rawSettings.rootfs
+  }
+
+  // check configs
+  // deployments is equivalent to 'configs'
+  if (rawSettings.configs && rawSettings.deployments) {
+    error("Cannot have both 'configs' and 'deployments' sections")
+  }
+  if (!rawSettings.configs && !rawSettings.deployments) {
+    error("Have to have either a 'configs' or a 'deployments' section")
+  }
+  
+  if (rawSettings.deployments) {
+    for (config in rawSettings.deployments) {
+
+      if (!config.timeout) {
+        config.timeout = defaults.timeout
+      }
+
+      if (!config.retries) {
+        config.retries = defaults.retries
+      }
+
+      if (!config.test) {
+        config.test = [:]
+      }
+
+      if (!config.test.values) {
+        config.test.values = [:]
+      }
+
+      if (!config.test.tests) {
+        config.test.tests = []
+      }
+
+      if (!config.stage) {
+        config.stage = [:]
+      }
+
+      if (!config.stage.values) {
+        config.stage.values = [:]
+      }
+
+      if (!config.stage.tests) {
+        config.stage.tests = []
+      }
+
+      for (test in config.stage.tests) {
+        test.image = test.image ? test.image : defaults.images.script
+        test.shell = test.shell ? test.shell : defaults.shell
+        if (!test.script) {
+          test = null
+        }
+      }
+
+      if (!config.prod) {
+        config.prod = [:]
+      }
+
+      if (!config.prod.values) {
+        config.prod.values = [:]
+      }
     }
 
-    if (!config.prod.values) {
-      config.prod.values = [:]
+    rawSettings.configs = rawSettings.deployments
+  }
+
+  if (rawSettings.configs) {
+    for (config in rawSettings.configs) {
+
+      if (!config.timeout) {
+        config.timeout = defaults.timeout
+      }
+
+      if (!config.retries) {
+        config.retries = defaults.retries
+      }
+
+      if (!config.test) {
+        config.test = [:]
+      }
+
+      if (!config.test.values) {
+        config.test.values = [:]
+      }
+
+      if (!config.test.tests) {
+        config.test.tests = []
+      }
+
+      if (!config.stage) {
+        config.stage = [:]
+      }
+
+      if (!config.stage.values) {
+        config.stage.values = [:]
+      }
+
+      if (!config.stage.tests) {
+        config.stage.tests = []
+      }
+
+      for (test in config.stage.tests) {
+        test.image = test.image ? test.image : defaults.images.script
+        test.shell = test.shell ? test.shell : defaults.shell
+        if (!test.script) {
+          test = null
+        }
+      }
+
+      if (!config.prod) {
+        config.prod = [:]
+      }
+
+      if (!config.prod.values) {
+        config.prod.values = [:]
+      }
     }
+
+    rawSettings.deployments = rawSettings.configs
   }
   
   // check test
