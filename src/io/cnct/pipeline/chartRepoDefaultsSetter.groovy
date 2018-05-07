@@ -399,16 +399,20 @@ def setDefaults(rawSettings, defaults) {
 
   if (rawSettings.tls) {
 
-    if (!rawSettings.tls.name) {
-      error("TLS section must have a 'name'")
-    }
-
     if (!rawSettings.tls[defaults.stageNamespace]) {
       error("TLS section must have a '${defaults.stageNamespace}'")
     }
 
     if (!rawSettings.tls[defaults.prodNamespace]) {
       error("TLS section must have a '${defaults.prodNamespace}' section")
+    }
+
+    if (!rawSettings.tls[defaults.prodNamespace].name) {
+      error("TLS ${defaults.prodNamespace} section must have a 'name'")
+    }
+
+    if (!rawSettings.tls[defaults.stageNamespace].name) {
+      error("TLS ${defaults.stageNamespace} section must have a 'name'")
     }
 
     if (!rawSettings.tls[defaults.prodNamespace].secretName) {
