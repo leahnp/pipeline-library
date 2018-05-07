@@ -1127,10 +1127,10 @@ def createCertificate(namespace) {
   def issuerName
   switch (namespace) {
     case defaults.stageNamespace:
-      issuerName = defaults.stagingIssuer
+      issuerName = defaults.tls.stagingIssuer
       break
     case defaults.prodNamespace:
-      issuerName = defaults.prodIssuer
+      issuerName = defaults.tls.prodIssuer
       break
     default:
       error("Unrecognized namespace ${namespace}")
