@@ -42,8 +42,8 @@ docker:
   prodTag: prod
 tls:
   ingress: pipeline-nginx
-  prodIssuer: pipeline-prod-issuer
-  stagingIssuer: pipeline-staging-issuer
+  prodIssuer: prod-issuer
+  stagingIssuer: staging-issuer
 packages:
   - rootfs
   - build
