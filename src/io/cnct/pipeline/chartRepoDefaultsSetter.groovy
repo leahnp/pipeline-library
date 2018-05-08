@@ -418,7 +418,7 @@ def setDefaults(rawSettings, defaults) {
       }
 
       if (!conf.dnsName) {
-        error("All tls configs have a 'domains' section")
+        error("All tls configs have a 'dnsName' section")
       }
     }
 
