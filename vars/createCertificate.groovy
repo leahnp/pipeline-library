@@ -22,7 +22,7 @@ def call(certificateConf, issuerName, ingressName) {
       ],
       "issuerRef": [
         "name": issuerName,
-        "kind": "Issuer"
+        "kind": "ClusterIssuer"
       ]
     ]
   ]
