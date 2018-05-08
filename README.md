@@ -37,7 +37,7 @@
     - [Pipeline yaml example](#pipeline-yaml-example)
   - [User scripts](#user-scripts)
     - [Environment variables](#environment-variables)
-    - [cert-manager and TLS support](#cert-manager-and-tls-support)
+  - [cert-manager and TLS support](#cert-manager-and-tls-support)
   - [Pipeline flow](#pipeline-flow)
   - [Common problems](#common-problems)
     - [Problems with chart labels](#problems-with-chart-labels)
@@ -774,8 +774,7 @@ The following environment variables are injected into all userscript containers:
 | `PIPELINE_BUILD_NUMBER` | Jenksins build number | `1` |
 | `PIPELINE_WORKSPACE` | Path to Jenkins workspace in the container | `/home/jenkins/workspace/test_PR-6-U5VHDHDXSBXPPAUMV2CWOZMLZN63RMD3TNPQVTEDDUQI553ZSCRA` |
 
-
-### cert-manager and TLS support
+## cert-manager and TLS support
 
 If you have [jetstack cert-manager](https://github.com/jetstack/cert-manager) deployed in the production namespace you pipeline can generate "Let's Encrypt" TLS certificate requests for prod and staging namespaces, based on the information in the deployed `Ingress` objects
 
