@@ -1142,13 +1142,8 @@ def createCertificate(namespace) {
     sh("kubectl delete Certificate ${tlsConf.name} --namespace ${namespace} || true")
 
     // create cert object, write to file, and install into cluster
-    def cert
-    if (tlsConf.issuer) {
-      cert = createCertificate(tlsConf, tlsConf.issuer, defaults.tls.ingress)
-    } else {
-      cert = createCertificate(tlsConf, defaultIssuerName, defaults.tls.ingress)
-    }
-
+    def cert = createCertificate(tlsConf, defaultIssuerName, defaults.tls.ingress)
+    
     toYamlFile(cert, "${pwd()}/${tlsConf.name}-cert.yaml")
     sh("kubectl create -f ${pwd()}/${tlsConf.name}-cert.yaml --namespace ${namespace}")
   }
