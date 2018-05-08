@@ -1,4 +1,4 @@
-def call(certificateConf, issuerName, ingressName) {
+def call(certificateConf, issuerName) {
   if (!certificateConf) {
     return
   }
@@ -13,9 +13,11 @@ def call(certificateConf, issuerName, ingressName) {
       "secretName": "",
       "dnsNames": [],
       "acme": [
-        "config": [
+        "config": [ 
           [
-            "ingressClass": ingressName,
+            "dns01": [
+              "provider": "route53",
+            ],
             "domains": []
           ]
         ]

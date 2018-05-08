@@ -41,7 +41,6 @@ docker:
   stageTag: staging
   prodTag: prod
 tls:
-  ingress: pipeline-nginx
   prodIssuer: prod-issuer
   stagingIssuer: staging-issuer
 packages:

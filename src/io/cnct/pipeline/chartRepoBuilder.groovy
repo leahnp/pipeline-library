@@ -788,7 +788,7 @@ def deployToStageHandler(scmVars) {
         }
 
         parallel deploySteps 
-        createCertificate(defaults.stageNamespace)            
+        createCert(defaults.stageNamespace)            
       }
     }
   }
@@ -846,7 +846,7 @@ def deployToProdHandler(scmVars) {
       }
 
       parallel deploySteps
-      createCertificate(defaults.prodNamespace)                    
+      createCert(defaults.prodNamespace)                    
     }
   }
 
@@ -1118,7 +1118,7 @@ def executeUserScript(stageText, scriptObj) {
 }
 
 // create certificates for prod or staging
-def createCertificate(namespace) {
+def createCert(namespace) {
 
   if (!pipeline.tls) {
     return
@@ -1142,7 +1142,7 @@ def createCertificate(namespace) {
     sh("kubectl delete Certificate ${tlsConf.name} --namespace ${namespace} || true")
 
     // create cert object, write to file, and install into cluster
-    def cert = createCertificate(tlsConf, defaultIssuerName, defaults.tls.ingress)
+    def cert = createCertificate(tlsConf, defaultIssuerName)
     
     toYamlFile(cert, "${pwd()}/${tlsConf.name}-cert.yaml")
     sh("kubectl create -f ${pwd()}/${tlsConf.name}-cert.yaml --namespace ${namespace}")
