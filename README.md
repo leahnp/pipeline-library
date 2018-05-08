@@ -37,6 +37,7 @@
     - [Pipeline yaml example](#pipeline-yaml-example)
   - [User scripts](#user-scripts)
     - [Environment variables](#environment-variables)
+    - [cert-manager and TLS support](#cert-manager-and-tls-support)
   - [Pipeline flow](#pipeline-flow)
   - [Common problems](#common-problems)
     - [Problems with chart labels](#problems-with-chart-labels)
@@ -382,6 +383,8 @@ Setting | Description
 `docker.prodTag` | Additonal tag for prod stage images
 `docker.packages` | Supported locations for dockerfile subfolders, relative to workspace root
 `docker.deployments` | Supported locations for chart subfolders, relative to workspace root
+`tls.prodIssuer` | Optional name of cert-manager ClusterIssuer for prod
+`tls.stagingIssuer` | Optional name of cert-manager ClusterIssuer for staging
 
 Example:
 
@@ -770,6 +773,39 @@ The following environment variables are injected into all userscript containers:
 | `PIPELINE_JOB_NAME` | Jenksins job name | `test/PR-6` |
 | `PIPELINE_BUILD_NUMBER` | Jenksins build number | `1` |
 | `PIPELINE_WORKSPACE` | Path to Jenkins workspace in the container | `/home/jenkins/workspace/test_PR-6-U5VHDHDXSBXPPAUMV2CWOZMLZN63RMD3TNPQVTEDDUQI553ZSCRA` |
+
+
+### cert-manager and TLS support
+
+If you have [jetstack cert-manager](https://github.com/jetstack/cert-manager) deployed in the production namespace you pipeline can generate "Let's Encrypt" TLS certificate requests for prod and staging namespaces, based on the information in the deployed `Ingress` objects
+
+Currently only AWS Route53 ACME verification is supported with `cert-manager`
+
+Once `cert-manager` is deployed, create two `ClusterIssuer` objects, one for `prod`, one for `staging` and set the `tls` section in `defaults.yaml` to the names of the two issuers.  
+Then setup the `tls` section of your `pipeline.yaml` as follows:
+
+Setting | Description
+| :--- | :---: |
+`tls.staging.[].name` | Name of the `Certificate` CRD to be created
+`tls.staging.[].secretName` | Name of the Kubernetes secret that will contain the generated TLS certificate
+`tls.staging.[].dnsName` | DNS name for which the TLS certificate will be generated 
+
+Then in your `Ingress` templates you can use secret name specified in `tls.staging.[].secretName` as the TLS secret. Example:
+
+```
+tls:
+  staging:
+    - name: pipelinedemo-staging-cert
+      secretName: pipelinedemo-staging-secret
+      dnsName: demo.staging.cnct.io
+  prod:
+    - name: pipelinedemo-prod-cert
+      secretName: pipelinedemo-prod-secret
+      dnsName: demo.prod.cnct.io
+    - name: pipelinedemo-friendly-cert
+      secretName: pipelinedemo-friendly-secret
+      dnsName: friendly.cnct.io
+``` 
 
 ## Pipeline flow
 

@@ -417,20 +417,8 @@ def setDefaults(rawSettings, defaults) {
         error("All tls configs have a 'secretName'")
       }
 
-      if (!conf.dnsNames) {
-        error("All tls configs have a 'dnsNames' section")
-      }
-
-      if (conf.dnsNames.size() == 0) {
-        error("All tls configs 'dnsNames' sections must have at least 1 item")
-      }
-
-      if (!conf.domains) {
+      if (!conf.dnsName) {
         error("All tls configs have a 'domains' section")
-      }
-
-      if (conf.domains.size() == 0) {
-        error("All tls configs 'domains' sections must have at least 1 item")
       }
     }
 
@@ -443,20 +431,8 @@ def setDefaults(rawSettings, defaults) {
         error("All tls configs have a 'secretName'")
       }
 
-      if (!conf.dnsNames) {
-        error("All tls configs have a 'dnsNames' section")
-      }
-
-      if (conf.dnsNames.size() == 0) {
-        error("All tls configs 'dnsNames' sections must have at least 1 item")
-      }
-
-      if (!conf.domains) {
-        error("All tls configs have a 'domains' section")
-      }
-
-      if (conf.domains.size() == 0) {
-        error("All tls configs 'domains' sections must have at least 1 item")
+      if (!conf.dnsName) {
+        error("All tls configs have a 'dnsName' section")
       }
     }
   }

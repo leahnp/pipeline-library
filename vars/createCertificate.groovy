@@ -31,8 +31,8 @@ def call(certificateConf, issuerName) {
 
   certConfig.metadata.name = certificateConf.name
   certConfig.spec.secretName = certificateConf.secretName
-  certConfig.spec.dnsNames = certificateConf.dnsNames
-  certConfig.spec.acme.config[0].domains = certificateConf.domains
+  certConfig.spec.dnsNames = [ certificateConf.dnsName ]
+  certConfig.spec.acme.config[0].domains = [ certificateConf.dnsName ]
 
   return certConfig
 }
