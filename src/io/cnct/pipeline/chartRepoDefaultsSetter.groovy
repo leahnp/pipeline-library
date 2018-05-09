@@ -397,6 +397,44 @@ def setDefaults(rawSettings, defaults) {
     }
   }
 
+  if (rawSettings.tls) {
+    if (rawSettings.tls[defaults.stageNamespace]) {
+      for (conf in rawSettings.tls[defaults.stageNamespace]) {
+        if (!conf.name) {
+          error("All tls configs have a 'name'")
+        }
+
+        if (!conf.secretName) {
+          error("All tls configs have a 'secretName'")
+        }
+
+        if (!conf.dnsName) {
+          error("All tls configs have a 'dnsName' section")
+        }
+      }
+    } else {
+      rawSettings.tls[defaults.stageNamespace] = []
+    }
+
+    if (rawSettings.tls[defaults.prodNamespace]) {
+      for (conf in rawSettings.tls[defaults.prodNamespace]) {
+        if (!conf.name) {
+          error("All tls configs have a 'name'")
+        }
+
+        if (!conf.secretName) {
+          error("All tls configs have a 'secretName'")
+        }
+
+        if (!conf.dnsName) {
+          error("All tls configs have a 'dnsName' section")
+        }
+      }
+    } else {
+      rawSettings.tls[defaults.prodNamespace] = []
+    }
+  }
+
   return rawSettings
 }
 

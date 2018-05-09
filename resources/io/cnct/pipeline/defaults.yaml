@@ -40,6 +40,9 @@ docker:
   testTag: test
   stageTag: staging
   prodTag: prod
+tls:
+  prodIssuer: prod-issuer
+  stagingIssuer: staging-issuer
 packages:
   - rootfs
   - build
