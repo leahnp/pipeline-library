@@ -316,6 +316,11 @@ def setDefaults(rawSettings, defaults) {
   if (!rawSettings.test) {
     rawSettings.test = [:]
   }
+
+  if (!rawSettings.test.cluster) {
+    rawSettings.test.cluster = defaults.targets.testCluster
+  }
+
   if (rawSettings.test.beforeScript) {
     rawSettings.test.beforeScript.image = 
       rawSettings.test.beforeScript.image ? rawSettings.test.beforeScript.image : defaults.images.script
@@ -340,6 +345,9 @@ def setDefaults(rawSettings, defaults) {
   // check staging
   if (!rawSettings.stage) {
     rawSettings.stage = [:]
+  }
+  if (!rawSettings.stage.cluster) {
+    rawSettings.stage.cluster = defaults.targets.stagingCluster
   }
   if (!rawSettings.stage.deploy) {
     rawSettings.stage.deploy = false
@@ -368,6 +376,9 @@ def setDefaults(rawSettings, defaults) {
   // check prod
   if (!rawSettings.prod) {
     rawSettings.prod = [:]
+  }
+  if (!rawSettings.prod.cluster) {
+    rawSettings.prod.cluster = defaults.targets.prodCluster
   }
   if (!rawSettings.prod.doDeploy) {
     rawSettings.prod.doDeploy = defaults.doDeploy
