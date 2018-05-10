@@ -84,9 +84,17 @@ def postCleanup(err) {
 
           if (isPRBuild || isSelfTest) {
 
+            // unstash kubeconfig files
+            unstashCheck("${env.BUILD_ID}-kube-configs".replaceAll('-','_'))
+
             // clean up failed releases if present
-            sh("helm list --namespace ${kubeName(env.JOB_NAME)} --short --failed --tiller-namespace ${pipeline.helm.namespace} | while read line; do helm delete \$line --purge --tiller-namespace ${pipeline.helm.namespace}; done")
-            sh("helm list --namespace ${defaults.stageNamespace} --short --failed --tiller-namespace ${pipeline.helm.namespace} | while read line; do helm delete \$line --purge --tiller-namespace ${pipeline.helm.namespace}; done")
+            withEnv(
+            [
+              "KUBECONFIG=${env.BUILD_ID}-test.kubeconfig"
+            ]) {
+              sh("helm list --namespace ${kubeName(env.JOB_NAME)} --short --failed --tiller-namespace ${pipeline.helm.namespace} | while read line; do helm delete \$line --purge --tiller-namespace ${pipeline.helm.namespace}; done")
+              sh("helm list --namespace ${defaults.stageNamespace} --short --failed --tiller-namespace ${pipeline.helm.namespace} | while read line; do helm delete \$line --purge --tiller-namespace ${pipeline.helm.namespace}; done")
+            }
 
             // additional cleanup on error that destroy handler might have missed
             if (err) {
@@ -95,16 +103,23 @@ def postCleanup(err) {
               for (chart in pipeline.deployments) {
                 if (chart.chart) {
                   def commandString = "helm delete ${chart.release}-${kubeName(env.JOB_NAME)} --purge --tiller-namespace ${pipeline.helm.namespace} || true"
-                  helmCleanSteps["${chart.chart}-deploy-test"] = { sh(commandString) }
+                  helmCleanSteps["${chart.chart}-deploy-test"] = { 
+                    withEnv(
+                      [
+                        "KUBECONFIG=${env.BUILD_ID}-test.kubeconfig"
+                      ]) {
+                      sh(commandString) 
+                    }
+                  }
                 }
               }
 
               echo("Contents of ${kubeName(env.JOB_NAME)} namespace:")
-              sh("kubectl describe all --namespace ${kubeName(env.JOB_NAME)} || true")
+              sh("kubectl describe all --namespace ${kubeName(env.JOB_NAME)} --kubeconfig=${env.BUILD_ID}-test.kubeconfig || true")
 
               parallel helmCleanSteps
 
-              sh("kubectl delete namespace ${kubeName(env.JOB_NAME)} || true")
+              sh("kubectl delete namespace ${kubeName(env.JOB_NAME)} --kubeconfig=${env.BUILD_ID}-test.kubeconfig || true")
             }
           }
         }
@@ -115,6 +130,15 @@ def postCleanup(err) {
 
 def initializeHandler() {
   def scmVars
+  
+  // init all the conditionals we care about
+  // This is a PR build if CHANGE_ID is set by git SCM
+  isPRBuild = (env.CHANGE_ID) ? true : false
+  // This is a master build if this is not a PR build
+  isMasterBuild = !isPRBuild
+  // TODO: this would be initialized from a job parameter.
+  isSelfTest = false
+
   for (pull in pipeline.pullSecrets ) {
     pullSecrets += pull.name
   }
@@ -285,14 +309,6 @@ def initializeHandler() {
       }
     }
   } 
-
-  // init all the conditionals we care about
-  // This is a PR build if CHANGE_ID is set by git SCM
-  isPRBuild = (env.CHANGE_ID) ? true : false
-  // This is a master build if this is not a PR build
-  isMasterBuild = !isPRBuild
-  // TODO: this would be initialized from a job parameter.
-  isSelfTest = false
 }
 
 def runPR() {
