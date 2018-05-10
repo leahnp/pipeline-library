@@ -117,10 +117,7 @@ def setDefaults(rawSettings, defaults) {
   if (rawSettings.builds && rawSettings.rootfs) {
     error("Cannot have both 'builds' and 'rootfs' sections")
   }
-  if (!rawSettings.builds && !rawSettings.rootfs) {
-    error("Have to have either a 'builds' or a 'rootfs' section")
-  }
-  
+    
   if (rawSettings.builds) {
     for (entry in rawSettings.builds) {
       if (!entry.context) {
@@ -204,10 +201,7 @@ def setDefaults(rawSettings, defaults) {
   if (rawSettings.configs && rawSettings.deployments) {
     error("Cannot have both 'configs' and 'deployments' sections")
   }
-  if (!rawSettings.configs && !rawSettings.deployments) {
-    error("Have to have either a 'configs' or a 'deployments' section")
-  }
-  
+    
   if (rawSettings.deployments) {
     for (config in rawSettings.deployments) {
 
