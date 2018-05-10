@@ -229,7 +229,7 @@ def initializeHandler() {
 
             stash(
               name: "${env.BUILD_ID}-kube-configs".replaceAll('-','_'),
-              includes: "*.kubeconfig"
+              includes: "**/*.kubeconfig"
             )
 
             def deleteSecrets = """
