@@ -11,6 +11,10 @@ retries: 1
 timeout: 600
 versionfile: .versionfile
 shell: sh
+targets: 
+  prodCluster: secret/prod-cluster/kubeconfig
+  stagingCluster: secret/staging-cluster/kubeconfig
+  testCluster: secret/staging-cluster/kubeconfig
 slack:
   channel: #ping-github
   credentials: slack-access

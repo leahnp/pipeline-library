@@ -201,6 +201,52 @@ def initializeHandler() {
             }
           }
         }
+
+        stage('Get target cluster configuration') {
+          withCredentials([string(credentialsId: defaults.vault.credentials, variable: 'VAULT_TOKEN')]) {
+            def vaultToken = env.VAULT_TOKEN
+
+            if (isPRBuild || isSelfTest) {
+              def testKubeconfig = getVaultKV(
+                defaults,
+                vaultToken,
+                defaults.targets.testCluster)
+              writeFile(file: "${env.BUILD_ID}-test.kubeconfig", text: testKubeconfig)
+              def stagingKubeconfig = getVaultKV(
+                defaults,
+                vaultToken,
+                defaults.targets.stagingCluster)
+              writeFile(file: "${env.BUILD_ID}-staging.kubeconfig", text: stagingKubeconfig)
+            }
+
+            if (isMasterBuild || isSelfTest) {
+              def prodKubeconfig = getVaultKV(
+                defaults,
+                vaultToken,
+                defaults.targets.prodCluster)
+              writeFile(file: "${env.BUILD_ID}-staging.kubeconfig", text: prodKubeconfig)
+            }
+
+            stash(
+              name: "${env.BUILD_ID}-kube-configs".replaceAll('-','_'),
+              includes: "*.kubeconfig"
+            )
+
+            def deleteSecrets = """
+              kubectl delete secret ${pull.name} --namespace=${defaults.jenkinsNamespace} || true"""
+            def createSecrets = """
+              set +x
+              kubectl create secret docker-registry ${pull.name} \
+                --docker-server=${pull.server} \
+                --docker-username=${pull.username} \
+                --docker-password='${secretVal}' \
+                --docker-email='${pull.email}' --namespace=${defaults.jenkinsNamespace}
+              set -x"""
+
+            sh(deleteSecrets)
+            sh(createSecrets)
+          }
+        }
       }
 
       container('vault') {
@@ -718,6 +764,10 @@ def deployToTestHandler(scmVars) {
   container('helm') {
     stage('Deploying to test namespace') {
       def deploySteps = [:]
+
+      // unstash kubeconfig files
+      unstashCheck("${env.BUILD_ID}-kube-configs".replaceAll('-','_'))
+
       for (chart in pipeline.deployments) {
         if (chart.chart) {
           // unstash chart yaml if applicable
@@ -745,7 +795,14 @@ def deployToTestHandler(scmVars) {
           def setParams = envMapToSetParams(chart.test.values)
           commandString += setParams
 
-          deploySteps["${chart.chart}-deploy-test"] = { sh(commandString) }
+          deploySteps["${chart.chart}-deploy-test"] = { 
+            withEnv(
+            [
+              "KUBECONFIG=${env.BUILD_ID}-test.kubeconfig"
+            ]) {
+              sh(commandString)
+            }  
+          }
         }
       }
 
@@ -765,6 +822,10 @@ def deployToStageHandler(scmVars) {
     container('helm') {
       stage('Deploying to stage namespace') {
         def deploySteps = [:]
+        
+        // unstash kubeconfig files
+        unstashCheck("${env.BUILD_ID}-kube-configs".replaceAll('-','_'))
+
         for (chart in pipeline.deployments) {
           if (chart.chart) {
             // unstash chart yaml if applicable
@@ -783,7 +844,14 @@ def deployToStageHandler(scmVars) {
             def setParams = envMapToSetParams(chart.stage.values)
             commandString += setParams
 
-            deploySteps["${chart.chart}-deploy-stage"] = { sh(commandString) }
+            deploySteps["${chart.chart}-deploy-stage"] = { 
+              withEnv(
+              [
+                "KUBECONFIG=${env.BUILD_ID}-staging.kubeconfig"
+              ]) {
+                sh(commandString)
+              }
+            }
           }
         }
 
@@ -802,6 +870,10 @@ def deployToProdHandler(scmVars) {
   container('helm') {
     def deploySteps = [:]
     stage('Deploying to prod namespace') {
+
+      // unstash kubeconfig files
+      unstashCheck("${env.BUILD_ID}-kube-configs".replaceAll('-','_'))
+
       for (chart in pipeline.deployments) {
         if (chart.chart) {
 
@@ -840,7 +912,14 @@ def deployToProdHandler(scmVars) {
             def setParams = envMapToSetParams(chart.prod.values)
             commandString += setParams
 
-            deploySteps["${chart.chart}-deploy-prod"] = { sh(commandString) }
+            deploySteps["${chart.chart}-deploy-prod"] = { 
+              withEnv(
+              [
+                "KUBECONFIG=${env.BUILD_ID}-prod.kubeconfig"
+              ]) {
+                sh(commandString)
+              }
+            }
           }
         }
       }
@@ -906,6 +985,10 @@ def chartProdVersion(scmVars) {
 def helmTestHandler(scmVars) {
   container('helm') {
     stage('Running helm tests') {
+      
+      // unstash kubeconfig files
+      unstashCheck("${env.BUILD_ID}-kube-configs".replaceAll('-','_'))
+
       for (chart in pipeline.deployments) {
         if (chart.chart) {
           def commandString = """
@@ -914,9 +997,14 @@ def helmTestHandler(scmVars) {
 
           retry(chart.retries) {
             try {
-              sh(commandString)
+              withEnv(
+                [
+                  "KUBECONFIG=${env.BUILD_ID}-test.kubeconfig"
+                ]) {
+                sh(commandString)
+              }
             } finally {
-              def logString = "kubectl get pods --namespace ${kubeName(env.JOB_NAME)} -o go-template\
+              def logString = "kubectl get pods --kubeconfig=${env.BUILD_ID}-test.kubeconfig --namespace ${kubeName(env.JOB_NAME)} -o go-template\
                   --template='{{range .items}}{{\$name := .metadata.name}}{{range \$key,\
                   \$value := .metadata.annotations}}{{\$name}} {{\$key}}:{{\$value}}+{{end}}{{end}}'\
                   | tr '+' '\\n' | grep -e helm.sh/hook:.*test-success -e helm.sh/hook:.*test-failure |\
@@ -967,19 +1055,29 @@ def destroyHandler(scmVars) {
   container('helm') {
     stage('Cleaning up test') {
       
+      // unstash kubeconfig files
+      unstashCheck("${env.BUILD_ID}-kube-configs".replaceAll('-','_'))
+
       echo("Contents of ${kubeName(env.JOB_NAME)} namespace:")
-      sh("kubectl describe all --namespace ${kubeName(env.JOB_NAME)}")
+      sh("kubectl describe all --kubeconfig=${env.BUILD_ID}-test.kubeconfig --namespace ${kubeName(env.JOB_NAME)}")
       
       for (chart in pipeline.deployments) {
         if (chart.chart) {
           def commandString = "helm delete ${chart.release}-${kubeName(env.JOB_NAME)} --purge --tiller-namespace ${pipeline.helm.namespace}"
-          destroySteps["${chart.release}-${kubeName(env.JOB_NAME)}"] = { sh(commandString) }
+          destroySteps["${chart.release}-${kubeName(env.JOB_NAME)}"] = { 
+            withEnv(
+              [
+                "KUBECONFIG=${env.BUILD_ID}-test.kubeconfig"
+              ]) {
+              sh(commandString)
+            } 
+          }
         }
       }
 
       parallel destroySteps
 
-      sh("kubectl delete namespace ${kubeName(env.JOB_NAME)}")
+      sh("kubectl delete namespace ${kubeName(env.JOB_NAME)} --kubeconfig=${env.BUILD_ID}-test.kubeconfig")
     }
   }
 
@@ -1125,27 +1223,33 @@ def createCert(namespace) {
   }
 
   def defaultIssuerName
+  def kubeconfigStr
   switch (namespace) {
     case defaults.stageNamespace:
       defaultIssuerName = defaults.tls.stagingIssuer
+      kubeconfigStr = "--kubeconfig=${env.BUILD_ID}-staging.kubeconfig"
       break
     case defaults.prodNamespace:
       defaultIssuerName = defaults.tls.prodIssuer
+      kubeconfigStr = "--kubeconfig=${env.BUILD_ID}-prod.kubeconfig"
       break
     default:
       error("Unrecognized namespace ${namespace}")
       break
   }  
 
+  // unstash kubeconfig files
+  unstashCheck("${env.BUILD_ID}-kube-configs".replaceAll('-','_'))
+
   for (tlsConf in pipeline.tls[namespace]) {
     // try to cleanup previous cert first
-    sh("kubectl delete Certificate ${tlsConf.name} --namespace ${namespace} || true")
+    sh("kubectl delete Certificate ${tlsConf.name} --namespace ${namespace} ${kubeconfigStr} || true")
 
     // create cert object, write to file, and install into cluster
     def cert = createCertificate(tlsConf, defaultIssuerName)
     
     toYamlFile(cert, "${pwd()}/${tlsConf.name}-cert.yaml")
-    sh("kubectl create -f ${pwd()}/${tlsConf.name}-cert.yaml --namespace ${namespace}")
+    sh("kubectl create -f ${pwd()}/${tlsConf.name}-cert.yaml --namespace ${namespace} ${kubeconfigStr}")
   }
 }
 
