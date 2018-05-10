@@ -250,26 +250,12 @@ def initializeHandler() {
                 defaults.targets.prodCluster)
               writeFile(file: "${env.BUILD_ID}-staging.kubeconfig", text: prodKubeconfig)
             }
-
-            stash(
-              name: "${env.BUILD_ID}-kube-configs".replaceAll('-','_'),
-              includes: "**/*.kubeconfig"
-            )
-
-            def deleteSecrets = """
-              kubectl delete secret ${pull.name} --namespace=${defaults.jenkinsNamespace} || true"""
-            def createSecrets = """
-              set +x
-              kubectl create secret docker-registry ${pull.name} \
-                --docker-server=${pull.server} \
-                --docker-username=${pull.username} \
-                --docker-password='${secretVal}' \
-                --docker-email='${pull.email}' --namespace=${defaults.jenkinsNamespace}
-              set -x"""
-
-            sh(deleteSecrets)
-            sh(createSecrets)
           }
+
+          stash(
+            name: "${env.BUILD_ID}-kube-configs".replaceAll('-','_'),
+            includes: "**/*.kubeconfig"
+          )
         }
       }
 
