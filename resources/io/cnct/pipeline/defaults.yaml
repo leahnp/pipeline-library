@@ -35,7 +35,7 @@ vault:
     key: "vault-client-key.pem"
     ca: "ca.pem"
 helm:
-  namespace: prod
+  namespace: pipeline-tools
   registry: charts.migrations.cnct.io
   credentials: chart-creds
 docker:
