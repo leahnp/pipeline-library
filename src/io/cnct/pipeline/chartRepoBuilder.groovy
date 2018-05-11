@@ -248,7 +248,7 @@ def initializeHandler() {
                 defaults,
                 vaultToken,
                 defaults.targets.prodCluster)
-              writeFile(file: "${env.BUILD_ID}-staging.kubeconfig", text: prodKubeconfig)
+              writeFile(file: "${env.BUILD_ID}-prod.kubeconfig", text: prodKubeconfig)
             }
           }
 
