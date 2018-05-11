@@ -385,7 +385,10 @@ Setting | Description
 `docker.deployments` | Supported locations for chart subfolders, relative to workspace root
 `tls.prodIssuer` | Optional name of cert-manager ClusterIssuer for prod
 `tls.stagingIssuer` | Optional name of cert-manager ClusterIssuer for staging
-
+`tls.stagingIssuer` | Optional name of cert-manager ClusterIssuer for staging
+`targets.testCluster` | Path to vault secret containing kube config for test target cluster
+`targets.stagingCluster` | Path to vault secret containing kube config for staging target cluster
+`targets.prodCluster` | Path to vault secret containing kube config for prod target cluster
 Example:
 
 ```
@@ -426,6 +429,13 @@ docker:
   testTag: test
   stageTag: staging
   prodTag: prod
+tls:
+  prodIssuer: prod-issuer
+  stagingIssuer: staging-issuer
+targets: 
+  prodCluster: secret/prod-cluster/config
+  stagingCluster: secret/staging-cluster/config
+  testCluster: secret/test-cluster/config
 ```
 
 ## Shared workflow library code
@@ -640,6 +650,7 @@ Setting | Description
 `test.afterScript.image` | Docker image to use for running the script
 `test.afterScript.shell` | Shell to use for running the script
 `test.afterScript.script` | Path to script file to run relative to current workspace
+`test.cluster` | Path to vault secret containing kube config for test target cluster
 
 #### stage 
 
@@ -656,6 +667,7 @@ Setting | Description
 `stage.afterScript.shell` | Shell to use for running the script
 `stage.afterScript.script` | Path to script file to run relative to current workspace
 `stage.deploy` | deploy to stage, true or false. False by default
+`stage.cluster` | Path to vault secret containing kube config for stage target cluster
 
 #### prod 
 
@@ -672,6 +684,7 @@ Setting | Description
 `prod.afterScript.shell` | Shell to use for running the script
 `prod.afterScript.script` | Path to script file to run relative to current workspace
 `prod.doDeploy` | Perform prod deployment condition. `none` - never. `versionfile` - only if versionfile changed. `auto` - always
+`prod.cluster` | Path to vault secret containing kube config for prod target cluster
 
 ### Pipeline yaml example
 
