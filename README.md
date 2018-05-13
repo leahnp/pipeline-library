@@ -392,7 +392,7 @@ Setting | Description
 Example:
 
 ```
-jenkinsNamespace: prod
+jenkinsNamespace: pipeline-tools
 prodNamespace: prod
 stageNamespace: staging
 serviceAccount: jenkins
@@ -412,7 +412,7 @@ images:
   vault: quay.io/maratoid/vault:latest
   script: quay.io/maratoid/script:latest
 vault:
-  server: http://vault-access.maratoid.svc.cluster.local
+  server: http://vault-access.pipeline-tools.svc.cluster.local
   credentials: vault-plugin
   api: v1
   tls:
@@ -422,7 +422,7 @@ vault:
     ca: "ca.pem"
 helm:
   namespace: kube-system
-  registry: http://museum-chartmuseum.maratoid.svc.cluster.local:8080
+  registry: charts.migrations.cnct.io
 docker:
   registry: quay.io
   credentials: docker-creds
