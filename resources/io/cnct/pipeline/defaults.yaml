@@ -1,5 +1,5 @@
 ---
-jenkinsNamespace: prod
+jenkinsNamespace: pipeline-tools
 prodNamespace: prod
 stageNamespace: staging
 serviceAccount: jenkins
@@ -11,6 +11,10 @@ retries: 1
 timeout: 600
 versionfile: .versionfile
 shell: sh
+targets: 
+  prodCluster: secret/prod-cluster/config
+  stagingCluster: secret/staging-cluster/config
+  testCluster: secret/test-cluster/config
 slack:
   channel: #ping-github
   credentials: slack-access
@@ -22,7 +26,7 @@ images:
   vault: quay.io/maratoid/vault:latest
   script: quay.io/maratoid/script:latest
 vault:
-  server: http://vault-access.prod.svc.cluster.local
+  server: http://vault-access.pipeline-tools.svc.cluster.local
   credentials: vault-plugin
   api: v1
   tls:
@@ -31,7 +35,7 @@ vault:
     key: "vault-client-key.pem"
     ca: "ca.pem"
 helm:
-  namespace: prod
+  namespace: pipeline-tools
   registry: charts.migrations.cnct.io
   credentials: chart-creds
 docker:
