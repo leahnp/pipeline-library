@@ -791,7 +791,7 @@ def deployToTestHandler(scmVars) {
           commandString = """${commandString}
           helm dependency update --debug ${chartLocation(defaults, chart.chart)}
           helm package --debug ${chartLocation(defaults, chart.chart)}
-          helm install ${chartLocation(defaults, chart.chart)} --tiller-namespace ${pipeline.helm.namespace} --namespace ${kubeName(env.JOB_NAME)} --name ${chart.release}-${kubeName(env.JOB_NAME)} """
+          helm install ${chartLocation(defaults, chart.chart)} --wait --timeout ${chart.timeout} --tiller-namespace ${pipeline.helm.namespace} --namespace ${kubeName(env.JOB_NAME)} --name ${chart.release}-${kubeName(env.JOB_NAME)}"""
 
           
           def setParams = envMapToSetParams(chart.test.values)
@@ -841,7 +841,7 @@ def deployToStageHandler(scmVars) {
             set +x
             helm init --client-only
             helm dependency update --debug ${chartLocation(defaults, chart.chart)}
-            helm upgrade --install --tiller-namespace ${pipeline.helm.namespace} --namespace ${defaults.stageNamespace} ${chart.release}-${defaults.stageNamespace} ${chartLocation(defaults, chart.chart)}""" 
+            helm upgrade --install --tiller-namespace ${pipeline.helm.namespace} --wait --timeout ${chart.timeout} --namespace ${defaults.stageNamespace} ${chart.release}-${defaults.stageNamespace} ${chartLocation(defaults, chart.chart)}""" 
             
             def setParams = envMapToSetParams(chart.stage.values)
             commandString += setParams
@@ -909,7 +909,7 @@ def deployToProdHandler(scmVars) {
 
             commandString = """${commandString}
             helm dependency update --debug ${chartLocation(defaults, chart.chart)}
-            helm upgrade --install --tiller-namespace ${pipeline.helm.namespace} --repo https://${defaults.helm.registry} --version ${chartYaml.version} --namespace ${defaults.prodNamespace} ${chart.release} ${chart.chart} """
+            helm upgrade --install --wait --timeout ${chart.timeout} --tiller-namespace ${pipeline.helm.namespace} --repo https://${defaults.helm.registry} --version ${chartYaml.version} --namespace ${defaults.prodNamespace} ${chart.release} ${chart.chart} """
             
             def setParams = envMapToSetParams(chart.prod.values)
             commandString += setParams
