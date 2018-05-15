@@ -81,6 +81,13 @@ def postCleanup(err) {
           sh("kubectl delete pvc jenkins-varlibdocker-${kubeName(env.JOB_NAME)} --namespace ${defaults.jenkinsNamespace} || true")
           // always cleanup storageclass
           sh("kubectl delete storageclass jenkins-storageclass-${kubeName(env.JOB_NAME)} || true")
+          // always clean up pull secrets
+          def deletePullSteps = [:]
+          for (pull in pipeline.pullSecrets ) {
+            def deleteSecrets = "kubectl delete secret ${pull.name}-${kubeName(env.JOB_NAME)} --namespace=${defaults.jenkinsNamespace} || true"
+            deletePullSteps["${pull.name}-${kubeName(env.JOB_NAME)}"] = { sh(deleteSecrets) }
+          }
+          parallel deletePullSteps
 
           if (isPRBuild || isSelfTest) {
 
@@ -139,9 +146,6 @@ def initializeHandler() {
   // TODO: this would be initialized from a job parameter.
   isSelfTest = false
 
-  for (pull in pipeline.pullSecrets ) {
-    pullSecrets += pull.name
-  }
 
   // collect the env values to be injected
   pipelineEnvVariables += containerEnvVar(key: 'DOCKER_HOST', value: 'localhost:2375')
@@ -201,6 +205,7 @@ def initializeHandler() {
         }
 
         stage('Create image pull secrets') {
+          def createPullSteps = [:]
           for (pull in pipeline.pullSecrets ) {
             withCredentials([string(credentialsId: defaults.vault.credentials, variable: 'VAULT_TOKEN')]) {
               def vaultToken = env.VAULT_TOKEN
@@ -209,21 +214,21 @@ def initializeHandler() {
                 vaultToken,
                 pull.password)
 
-              def deleteSecrets = """
-                kubectl delete secret ${pull.name} --namespace=${defaults.jenkinsNamespace} || true"""
               def createSecrets = """
                 set +x
-                kubectl create secret docker-registry ${pull.name} \
+                kubectl create secret docker-registry ${pull.name}-${kubeName(env.JOB_NAME)} \
                   --docker-server=${pull.server} \
                   --docker-username=${pull.username} \
                   --docker-password='${secretVal}' \
                   --docker-email='${pull.email}' --namespace=${defaults.jenkinsNamespace}
                 set -x"""
 
-              sh(deleteSecrets)
-              sh(createSecrets)
+              pullSecrets += "${pull.name}-${kubeName(env.JOB_NAME)}"
+              createPullSteps["${pull.name}-${kubeName(env.JOB_NAME)}"] = { sh(createSecrets) }
             }
           }
+
+          parallel createPullSteps
         }
 
         stage('Get target cluster configuration') {
@@ -1011,8 +1016,8 @@ def helmTestHandler(scmVars) {
                   \$value := .metadata.annotations}}{{\$name}} {{\$key}}:{{\$value}}+{{end}}{{end}}'\
                   | tr '+' '\\n' | grep -e helm.sh/hook:.*test-success -e helm.sh/hook:.*test-failure |\
                   cut -d' ' -f1 | while read line;\
-                  do kubectl logs \$line --namespace ${kubeName(env.JOB_NAME)};\
-                  kubectl delete pod \$line --namespace ${kubeName(env.JOB_NAME)}; done"
+                  do kubectl logs \$line --namespace ${kubeName(env.JOB_NAME)} --kubeconfig=${env.BUILD_ID}-test.kubeconfig;\
+                  kubectl delete pod \$line --namespace ${kubeName(env.JOB_NAME)} --kubeconfig=${env.BUILD_ID}-test.kubeconfig; done"
               sh(logString)
             }
           }
