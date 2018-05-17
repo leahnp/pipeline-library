@@ -29,8 +29,8 @@
       - [vault](#vault)
       - [helm](#helm)
       - [pullSecrets](#pullsecrets)
-      - [rootfs](#rootfs)
-      - [configs](#configs)
+      - [rootfs / builds](#rootfs--builds)
+      - [configs / deployments](#configs--deployments)
       - [test](#test)
       - [stage](#stage)
       - [prod](#prod)
@@ -588,15 +588,17 @@ Setting | Description
 `pullSecrets.[].password` | Path to Vault K/V value containing registry password. I.e `kv-backend/kv-name/kv-value-name`
 
 
-#### rootfs 
+#### rootfs / builds
 
-Array of images to be built under `rootfs` folder, and how they relate to Helm values of charts under `charts`
+Array of images and binaries to be built under `rootfs` folder, and how they relate to Helm values of charts under `charts`
 
 Setting | Description
 | :--- | :---: |
 `rootfs` | Array of rootfs objects
 `builds` | Equivalent to `rootfs`
-`rootfs.[].image` | image to build, without the `:tag`
+`rootfs.[].image` | image to build, without the `:tag`, or image to use for building a binary
+`rootfs.[].script` |  Path to script to run in `rootfs.[].image` relative to current workspace. Mutually exclusive with `buildArgs`, `context`, `dockerContext`, `chart` and `value`
+`rootfs.[].commands` | commands to run in `rootfs.[].image` (multi line string). Mutually exclusive with `buildArgs`, `context`, `dockerContext`, `chart` and `value` 
 `rootfs.[].buildArgs` | Array of build arg objects for the image
 `rootfs.[].buildArgs.[].arg` | arg name
 `rootfs.[].buildArgs.[].value` | arg value
@@ -607,7 +609,7 @@ Setting | Description
 `rootfs.[].chart` | Name of the chart using this image, under `charts`
 `rootfs.[].value` | Dot-path to value under the chart's values.yaml that sets this image for the chart. I.e. `section.image.myawesomecontainer`
 
-#### configs
+#### configs / deployments
 
 Pipeline stage configurations
 
@@ -629,8 +631,9 @@ Setting | Description
 `configs.[].stage.values.[].secret` | Path to Vault K/V value containing the value. I.e `kv-backend/kv-name/kv-value-name`
 `configs.[].stage.tests` | Array of test scripts to run as part of staging tests
 `configs.[].stage.tests.[].image` | Docker image to use
-`configs.[].stage.tests.[].shell` | Shell to use for running the script
+`configs.[].stage.tests.[].shell` | Shell to use for running the script or commands
 `configs.[].stage.tests.[].script` | Path to script file to run relative to current workspace
+`configs.[].stage.tests.[].commands` | Commands to run (multi line string)
 `configs.[].prod.values` | Array of override values for prod stage. Can be straight values, or references to a value from Vault K/V.
 `configs.[].prod.values.[].key` | Name of helm value. I.e. `some.key.somewhere`
 `configs.[].prod.values.[].value` | Value to use
@@ -646,10 +649,12 @@ Setting | Description
 `test.beforeScript.image` | Docker image to use for running the script
 `test.beforeScript.shell`| Shell to use for running the script
 `test.beforeScript.script` | Path to script file to run relative to current workspace
+`test.beforeScript.commands` | Commands to run (multi line string)
 `test.afterScript` | Script info to execute after test namespace is destroyed
 `test.afterScript.image` | Docker image to use for running the script
 `test.afterScript.shell` | Shell to use for running the script
 `test.afterScript.script` | Path to script file to run relative to current workspace
+`test.afterScript.commands` | Commands to run (multi line string)
 `test.cluster` | Path to vault secret containing kube config for test target cluster
 
 #### stage 
@@ -662,12 +667,15 @@ Setting | Description
 `stage.beforeScript.image` | Docker image to use for running the script
 `stage.beforeScript.shell` | Shell to use for running the script
 `stage.beforeScript.script` | Path to script file to run relative to current workspace
+`stage.beforeScript.commands` | Commands to run (multi line string)
 `stage.afterScript` | Script info to execute afrter staging deployment
 `stage.afterScript.image` | Docker image to use for running the script
 `stage.afterScript.shell` | Shell to use for running the script
 `stage.afterScript.script` | Path to script file to run relative to current workspace
+`stage.afterScript.commands` | Commands to run (multi line string)
 `stage.deploy` | deploy to stage, true or false. False by default
 `stage.cluster` | Path to vault secret containing kube config for stage target cluster
+`stage.namespace` | Name of staging namespace. Defaults to value of `defaults.stageNamespace`
 
 #### prod 
 
@@ -679,12 +687,15 @@ Setting | Description
 `prod.beforeScript.image` | Docker image to use for running the script
 `prod.beforeScript.shell` | Shell to use for running the script
 `prod.beforeScript.script` | Path to script file to run relative to current workspace
+`prod.beforeScript.commands` | Commands to run (multi line string)
 `prod.afterScript` | Script info to execute before prod deployment
 `prod.afterScript.image` | Docker image to use for running the script
 `prod.afterScript.shell` | Shell to use for running the script
 `prod.afterScript.script` | Path to script file to run relative to current workspace
+`prod.afterScript.commands` | Commands to run (multi line string)
 `prod.doDeploy` | Perform prod deployment condition. `none` - never. `versionfile` - only if versionfile changed. `auto` - always
 `prod.cluster` | Path to vault secret containing kube config for prod target cluster
+`prod.namespace` | Name of prod namespace. Defaults to value of `defaults.prodNamespace`
 
 ### Pipeline yaml example
 
@@ -793,14 +804,14 @@ If you have [jetstack cert-manager](https://github.com/jetstack/cert-manager) de
 
 Currently only AWS Route53 ACME verification is supported with `cert-manager`
 
-Once `cert-manager` is deployed, create two `ClusterIssuer` objects, one for `prod`, one for `staging` and set the `tls` section in `defaults.yaml` to the names of the two issuers.  
+Once `cert-manager` is deployed, create two `ClusterIssuer` objects, one for `<name of prod namespace>`, one for `<name of staging namespace` and set the `tls` section in `defaults.yaml` to the names of the two issuers.  
 Then setup the `tls` section of your `pipeline.yaml` as follows:
 
 Setting | Description
 | :--- | :---: |
-`tls.staging.[].name` | Name of the `Certificate` CRD to be created
-`tls.staging.[].secretName` | Name of the Kubernetes secret that will contain the generated TLS certificate
-`tls.staging.[].dnsName` | DNS name for which the TLS certificate will be generated 
+`tls.<namespace>.[].name` | Name of the `Certificate` CRD to be created
+`tls.<namespace>.[].secretName` | Name of the Kubernetes secret that will contain the generated TLS certificate
+`tls.<namespace>.[].dnsName` | DNS name for which the TLS certificate will be generated 
 
 Then in your `Ingress` templates you can use secret name specified in `tls.staging.[].secretName` as the TLS secret. Example:
 
