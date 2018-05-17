@@ -390,9 +390,10 @@ def buildsTestHandler(scmVars) {
 
   for (container in pipeline.builds) {
     if (container.script || container.commands) {
+      def description = "Executing binary build ${binaryBuildCounter} using ${container.image}"
+      def _container = container
       parallelBinaryBuildSteps["binary-build-${binaryBuildCounter}"] = { 
-        executeUserScript("Executing binary build ${binaryBuildCounter} using ${container.image}".toString(), // force string expansion
-          container) 
+        executeUserScript(description, _container) 
       }
       binaryBuildCounter += 1 
     } else {
