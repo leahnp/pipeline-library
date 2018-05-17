@@ -390,7 +390,10 @@ def buildsTestHandler(scmVars) {
 
   for (container in pipeline.builds) {
     if (container.script || container.commands) {
-      parallelBinaryBuildSteps["binary-build-${binaryBuildCounter}"] = { executeUserScript("Executing binary build ${binaryBuildCounter} using ${container.image}", container) }
+      parallelBinaryBuildSteps["binary-build-${binaryBuildCounter}"] = { 
+        executeUserScript("Executing binary build ${binaryBuildCounter} using ${container.image}", 
+          container) 
+      }
       binaryBuildCounter += 1 
     } else {
       // build steps
@@ -1045,7 +1048,7 @@ def testTestHandler(scmVars) {
   for (config in pipeline.deployments) {
     if (config.test.tests) {
       for (test in config.test.tests) {
-        executeUserScript('Executing test test scripts', test)
+        executeUserScript('Executing test test scripts', test, ["KUBECONFIG=${pwd()}/${env.BUILD_ID}-test.kubeconfig"])
       }
     }
   }
@@ -1059,7 +1062,7 @@ def stageTestHandler(scmVars) {
   for (config in pipeline.deployments) {
     if (config.stage.tests) {
       for (test in config.stage.tests) {
-        executeUserScript('Executing staging test scripts', test)
+        executeUserScript('Executing staging test scripts', test, ["KUBECONFIG=${pwd()}/${env.BUILD_ID}-staging.kubeconfig"])
       }
     }
   }
@@ -1219,10 +1222,13 @@ def getScriptImages() {
 // script: path/to/some-script.sh
 // ---
 // yaml definition 
-def executeUserScript(stageText, scriptObj) {
+def executeUserScript(stageText, scriptObj, additionalEnvs = []) {
   if (scriptObj) {
     stage(stageText) {
       container(containerName(scriptObj.image)) {
+
+        // unstash kubeconfig files
+        unstashCheck("${env.BUILD_ID}-kube-configs".replaceAll('-','_'))
 
         withEnv(
           [
@@ -1233,7 +1239,7 @@ def executeUserScript(stageText, scriptObj) {
             "PIPELINE_JOB_NAME=${env.JOB_NAME}",
             "PIPELINE_BUILD_NUMBER=${env.BUILD_NUMBER}",
             "PIPELINE_WORKSPACE=${env.WORKSPACE}"
-          ]) {
+          ] + additionalEnvs) {
           if (scriptObj.commands) {
             sh(scriptObj.commands)
           }
