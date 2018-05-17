@@ -171,48 +171,50 @@ def setDefaults(rawSettings, defaults) {
   }
 
   if (rawSettings.rootfs) {
-    if (entry.script || entry.commands) {
-      if (!entry.image) {
-        error("Can't have rootfs entries with 'script or 'command' AND no 'image'")
-      }
+    for (entry in rawSettings.rootfs) {
+      if (entry.script || entry.commands) {
+        if (!entry.image) {
+          error("Can't have rootfs entries with 'script or 'command' AND no 'image'")
+        }
 
-      if (entry.context) {
-        error("Can't have rootfs entries with 'script or 'command' AND 'context'")
-      }
+        if (entry.context) {
+          error("Can't have rootfs entries with 'script or 'command' AND 'context'")
+        }
 
-      if (entry.dockerContext) {
-        error("Can't have rootfs entries with 'script or 'command' AND 'dockerContext'")
-      }
+        if (entry.dockerContext) {
+          error("Can't have rootfs entries with 'script or 'command' AND 'dockerContext'")
+        }
 
-      if (entry.context) {
-        error("Can't have rootfs entries with 'script or 'command' AND 'context'")
-      }
+        if (entry.context) {
+          error("Can't have rootfs entries with 'script or 'command' AND 'context'")
+        }
 
-      if (entry.buildArgs) {
-        error("Can't have rootfs entries with 'script or 'command' AND 'buildArgs'")
-      }
+        if (entry.buildArgs) {
+          error("Can't have rootfs entries with 'script or 'command' AND 'buildArgs'")
+        }
 
-      entry.shell = entry.shell ? entry.shell : defaults.shell
-    } else {
-      if (!entry.context) {
-        error("rootfs items must have 'context' field")
-      }
+        entry.shell = entry.shell ? entry.shell : defaults.shell
+      } else {
+        if (!entry.context) {
+          error("rootfs items must have 'context' field")
+        }
 
-      if (!entry.dockerContext) {
-        entry.dockerContext = "./rootfs/${entry.context}"
-      }
+        if (!entry.dockerContext) {
+          entry.dockerContext = "./rootfs/${entry.context}"
+        }
 
-      if (!entry.image) {
-        error("rootfs items must have 'image' field")
-      }
+        if (!entry.image) {
+          error("rootfs items must have 'image' field")
+        }
 
-      if (!entry.buildArgs) {
-        entry.buildArgs = []
-      }
+        if (!entry.buildArgs) {
+          entry.buildArgs = []
+        }
 
-      for (arg in entry.buildArgs) {
-        if (!arg.arg) {
-          error("Each rootfs buildArg items must have 'arg' field")
+        for (arg in entry.buildArgs) {
+          if (!arg.arg) {
+            error("Each rootfs buildArg items must have 'arg' field")
+          }
         }
       }
     }
