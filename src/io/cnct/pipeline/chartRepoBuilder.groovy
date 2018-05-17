@@ -454,7 +454,9 @@ def buildsTestHandler(scmVars) {
   }
 
   // build binaries
-  parallel parallelBinaryBuildSteps
+  stage('Build binaries') {
+    parallel parallelBinaryBuildSteps
+  }
 
   // build containers
   container('docker') {
