@@ -377,6 +377,7 @@ def buildsTestHandler(scmVars) {
   def gitCommit = scmVars.GIT_COMMIT
   def chartsWithContainers = []
 
+  def parallelBinaryBuildSteps = [:]
   def binaryBuildCounter = 0
   def parallelContainerBuildSteps = [:]
   def parallelTagSteps = [:]
@@ -389,7 +390,10 @@ def buildsTestHandler(scmVars) {
 
   for (container in pipeline.builds) {
     if (container.script || container.commands) {
-      executeUserScript("Executing binary build ${binaryBuildCounter} using ${container.image}", container) 
+      parallelBinaryBuildSteps["binary-build-${binaryBuildCounter}"] = { 
+        executeUserScript("Executing binary build ${binaryBuildCounter} using ${container.image}".toString(), // force string expansion
+          container) 
+      }
       binaryBuildCounter += 1 
     } else {
       // build steps
@@ -449,6 +453,9 @@ def buildsTestHandler(scmVars) {
     }
   }
 
+  // build binaries
+  parallel parallelBinaryBuildSteps
+
   // build containers
   container('docker') {
     stage("Building docker files, tagging with ${gitCommit} and ${defaults.docker.testTag} and pushing.") {
@@ -497,7 +504,7 @@ def buildsStageHandler(scmVars) {
   def useTag = makeDockerTag(defaults, gitCommit)
 
   for (container in pipeline.builds) {
-    if (!container.script && container.commands) {
+    if (!container.script && !container.commands) {
       // tag steps
       def tagCommandString = "docker tag ${defaults.docker.registry}/${container.image}:${useTag} \
        ${defaults.docker.registry}/${container.image}:${defaults.docker.stageTag}"
@@ -563,7 +570,7 @@ def buildsProdHandler(scmVars) {
   // for later execution in parallel
   // Also memoize the builds objects, if they are connected to in-repo charts
   for (container in pipeline.builds) {
-    if (!container.script && container.commands) {
+    if (!container.script && !container.commands) {
       // build steps
       def buildCommandString = "docker build -t \
         ${defaults.docker.registry}/${container.image}:${useTag} --pull " 
