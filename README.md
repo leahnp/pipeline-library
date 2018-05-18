@@ -3,6 +3,7 @@
 <!-- MarkdownTOC levels="1,2,3,4,5,6" autolink=true bracket="round" -->
 
 - [Quick start](#quick-start)
+  - [Complete example](#complete-example)
   - [Create a github repository](#create-a-github-repository)
   - [Edit the values.yaml file](#edit-the-valuesyaml-file)
   - [Edit pipeline.yaml](#edit-pipelineyaml)
@@ -45,6 +46,10 @@
 <!-- /MarkdownTOC -->
 
 # Quick start
+
+## Complete example
+
+Full example at [pipeline-demo repository](https://github.com/samsung-cnct/pipeline-demo)
 
 ## Create a github repository
 
