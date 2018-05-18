@@ -362,6 +362,7 @@ def runMerge() {
       chartProdHandler(scmVars)
       deployToProdHandler(scmVars)
       chartProdVersion(scmVars)
+      triggerUmbrellas(scmVars)
 
       // run after scripts
       executeUserScript('Executing global \'after\' scripts', pipeline.afterScript)
@@ -1030,6 +1031,20 @@ def chartProdVersion(scmVars) {
       parallel parallelChartSteps
     }
   }
+}
+
+// trigger builds for any umbrella charts, if present
+def triggerUmbrellas(scmVars) {
+  def triggerSteps[:]
+
+  configFileProvider([configFile(fileId: "${env.JOB_NAME}".split('/')[0], variable: 'TRIGGER_PIPELINES')]) {
+    def triggerPipelines = env.TRIGGER_PIPELINES.tokenize(',').unique()
+    for (trigger in triggerPipelines) {
+      triggerSteps[trigger.toString()] = { build(job: "${trigger}/master", propagate: true, wait: true) }
+    }
+  }
+
+  parallel triggerSteps
 }
 
 // run helm tests
