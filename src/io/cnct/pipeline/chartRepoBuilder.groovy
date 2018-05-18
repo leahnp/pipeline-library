@@ -1035,7 +1035,7 @@ def chartProdVersion(scmVars) {
 
 // trigger builds for any umbrella charts, if present
 def triggerUmbrellas(scmVars) {
-  def triggerSteps[:]
+  def triggerSteps = [:]
 
   configFileProvider([configFile(fileId: "${env.JOB_NAME}".split('/')[0], variable: 'TRIGGER_PIPELINES')]) {
     def triggerPipelines = env.TRIGGER_PIPELINES.tokenize(',').unique()
