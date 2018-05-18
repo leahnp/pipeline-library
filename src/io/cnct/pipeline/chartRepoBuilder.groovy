@@ -405,13 +405,15 @@ def buildsTestHandler(scmVars) {
 
         for (buildArg in container.buildArgs) {
           if (buildArg.secret) {
-            withCredentials([string(credentialsId: defaults.vault.credentials, variable: 'VAULT_TOKEN')]) {
-              def vaultToken = env.VAULT_TOKEN
-              def secretVal = getVaultKV(
-                defaults,
-                vaultToken,
-                buildArg.secret)
-              argMap += ["${buildArg.arg}" : "${secretVal.trim()}"]
+            container('vault') {
+              withCredentials([string(credentialsId: defaults.vault.credentials, variable: 'VAULT_TOKEN')]) {
+                def vaultToken = env.VAULT_TOKEN
+                def secretVal = getVaultKV(
+                  defaults,
+                  vaultToken,
+                  buildArg.secret)
+                argMap += ["${buildArg.arg}" : "${secretVal.trim()}"]
+              }
             }
           } else if (buildArg.env) {
             
@@ -582,13 +584,15 @@ def buildsProdHandler(scmVars) {
 
         for (buildArg in container.buildArgs) {
           if (buildArg.secret) {
-            withCredentials([string(credentialsId: defaults.vault.credentials, variable: 'VAULT_TOKEN')]) {
-              def vaultToken = env.VAULT_TOKEN
-              def secretVal = getVaultKV(
-                defaults,
-                vaultToken,
-                buildArg.secret)
-              argMap += ["${buildArg.arg}" : "${secretVal.trim()}"]
+            container('vault') {
+              withCredentials([string(credentialsId: defaults.vault.credentials, variable: 'VAULT_TOKEN')]) {
+                def vaultToken = env.VAULT_TOKEN
+                def secretVal = getVaultKV(
+                  defaults,
+                  vaultToken,
+                  buildArg.secret)
+                argMap += ["${buildArg.arg}" : "${secretVal.trim()}"]
+              }
             }
           } else if (buildArg.env) {
             
