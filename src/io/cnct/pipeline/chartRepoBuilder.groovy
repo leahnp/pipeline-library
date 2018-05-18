@@ -1036,15 +1036,20 @@ def chartProdVersion(scmVars) {
 // trigger builds for any umbrella charts, if present
 def triggerUmbrellas(scmVars) {
   def triggerSteps = [:]
-
-  configFileProvider([configFile(fileId: "${env.JOB_NAME}".split('/')[0], variable: 'TRIGGER_PIPELINES')]) {
-    def triggerPipelines = env.TRIGGER_PIPELINES.tokenize(',').unique()
-    for (trigger in triggerPipelines) {
-      triggerSteps[trigger.toString()] = { build(job: "${trigger}/master", propagate: true, wait: true) }
+  try {
+    configFileProvider([configFile(fileId: "${env.JOB_NAME.split('/')[0]}-dependencies", variable: 'TRIGGER_PIPELINES')]) {
+      def triggerPipelines = env.TRIGGER_PIPELINES.tokenize(',').unique()
+      for (trigger in triggerPipelines) {
+        triggerSteps[trigger.toString()] = { build(job: "${trigger}/master", propagate: true, wait: true) }
+      }
     }
+  } catch (e) {
+    echo("No umbrella charts to trigger.")
   }
 
-  parallel triggerSteps
+  if (triggerSteps.size() > 0) {
+    parallel triggerSteps
+  }
 }
 
 // run helm tests
