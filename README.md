@@ -3,6 +3,7 @@
 <!-- MarkdownTOC levels="1,2,3,4,5,6" autolink=true bracket="round" -->
 
 - [Quick start](#quick-start)
+  - [Complete example](#complete-example)
   - [Create a github repository](#create-a-github-repository)
   - [Edit the values.yaml file](#edit-the-valuesyaml-file)
   - [Edit pipeline.yaml](#edit-pipelineyaml)
@@ -29,8 +30,8 @@
       - [vault](#vault)
       - [helm](#helm)
       - [pullSecrets](#pullsecrets)
-      - [rootfs](#rootfs)
-      - [configs](#configs)
+      - [rootfs / builds](#rootfs--builds)
+      - [configs / deployments](#configs--deployments)
       - [test](#test)
       - [stage](#stage)
       - [prod](#prod)
@@ -45,6 +46,10 @@
 <!-- /MarkdownTOC -->
 
 # Quick start
+
+## Complete example
+
+Full example at [pipeline-demo repository](https://github.com/samsung-cnct/pipeline-demo)
 
 ## Create a github repository
 
@@ -588,15 +593,17 @@ Setting | Description
 `pullSecrets.[].password` | Path to Vault K/V value containing registry password. I.e `kv-backend/kv-name/kv-value-name`
 
 
-#### rootfs 
+#### rootfs / builds
 
-Array of images to be built under `rootfs` folder, and how they relate to Helm values of charts under `charts`
+Array of images and binaries to be built under `rootfs` folder, and how they relate to Helm values of charts under `charts`
 
 Setting | Description
 | :--- | :---: |
 `rootfs` | Array of rootfs objects
 `builds` | Equivalent to `rootfs`
-`rootfs.[].image` | image to build, without the `:tag`
+`rootfs.[].image` | image to build, without the `:tag`, or image to use for building a binary
+`rootfs.[].script` |  Path to script to run in `rootfs.[].image` relative to current workspace. Mutually exclusive with `buildArgs`, `context`, `dockerContext`, `chart` and `value`
+`rootfs.[].commands` | commands to run in `rootfs.[].image` (multi line string). Mutually exclusive with `buildArgs`, `context`, `dockerContext`, `chart` and `value` 
 `rootfs.[].buildArgs` | Array of build arg objects for the image
 `rootfs.[].buildArgs.[].arg` | arg name
 `rootfs.[].buildArgs.[].value` | arg value
@@ -607,7 +614,7 @@ Setting | Description
 `rootfs.[].chart` | Name of the chart using this image, under `charts`
 `rootfs.[].value` | Dot-path to value under the chart's values.yaml that sets this image for the chart. I.e. `section.image.myawesomecontainer`
 
-#### configs
+#### configs / deployments
 
 Pipeline stage configurations
 
@@ -629,8 +636,9 @@ Setting | Description
 `configs.[].stage.values.[].secret` | Path to Vault K/V value containing the value. I.e `kv-backend/kv-name/kv-value-name`
 `configs.[].stage.tests` | Array of test scripts to run as part of staging tests
 `configs.[].stage.tests.[].image` | Docker image to use
-`configs.[].stage.tests.[].shell` | Shell to use for running the script
+`configs.[].stage.tests.[].shell` | Shell to use for running the script or commands
 `configs.[].stage.tests.[].script` | Path to script file to run relative to current workspace
+`configs.[].stage.tests.[].commands` | Commands to run (multi line string)
 `configs.[].prod.values` | Array of override values for prod stage. Can be straight values, or references to a value from Vault K/V.
 `configs.[].prod.values.[].key` | Name of helm value. I.e. `some.key.somewhere`
 `configs.[].prod.values.[].value` | Value to use
@@ -646,10 +654,12 @@ Setting | Description
 `test.beforeScript.image` | Docker image to use for running the script
 `test.beforeScript.shell`| Shell to use for running the script
 `test.beforeScript.script` | Path to script file to run relative to current workspace
+`test.beforeScript.commands` | Commands to run (multi line string)
 `test.afterScript` | Script info to execute after test namespace is destroyed
 `test.afterScript.image` | Docker image to use for running the script
 `test.afterScript.shell` | Shell to use for running the script
 `test.afterScript.script` | Path to script file to run relative to current workspace
+`test.afterScript.commands` | Commands to run (multi line string)
 `test.cluster` | Path to vault secret containing kube config for test target cluster
 
 #### stage 
@@ -662,12 +672,15 @@ Setting | Description
 `stage.beforeScript.image` | Docker image to use for running the script
 `stage.beforeScript.shell` | Shell to use for running the script
 `stage.beforeScript.script` | Path to script file to run relative to current workspace
+`stage.beforeScript.commands` | Commands to run (multi line string)
 `stage.afterScript` | Script info to execute afrter staging deployment
 `stage.afterScript.image` | Docker image to use for running the script
 `stage.afterScript.shell` | Shell to use for running the script
 `stage.afterScript.script` | Path to script file to run relative to current workspace
+`stage.afterScript.commands` | Commands to run (multi line string)
 `stage.deploy` | deploy to stage, true or false. False by default
 `stage.cluster` | Path to vault secret containing kube config for stage target cluster
+`stage.namespace` | Name of staging namespace. Defaults to value of `defaults.stageNamespace`
 
 #### prod 
 
@@ -679,20 +692,24 @@ Setting | Description
 `prod.beforeScript.image` | Docker image to use for running the script
 `prod.beforeScript.shell` | Shell to use for running the script
 `prod.beforeScript.script` | Path to script file to run relative to current workspace
+`prod.beforeScript.commands` | Commands to run (multi line string)
 `prod.afterScript` | Script info to execute before prod deployment
 `prod.afterScript.image` | Docker image to use for running the script
 `prod.afterScript.shell` | Shell to use for running the script
 `prod.afterScript.script` | Path to script file to run relative to current workspace
+`prod.afterScript.commands` | Commands to run (multi line string)
 `prod.doDeploy` | Perform prod deployment condition. `none` - never. `versionfile` - only if versionfile changed. `auto` - always
 `prod.cluster` | Path to vault secret containing kube config for prod target cluster
+`prod.namespace` | Name of prod namespace. Defaults to value of `defaults.prodNamespace`
 
 ### Pipeline yaml example
+
+Below example was specifically written to use most features of the pipeline configuration:
 
 ```
 type: chart
 beforeScript:
   script: scripts/globalBefore.sh
-  shell: /bin/bash
 afterScript:
   image: alpine:latest
   script: scripts/globalAfter.sh
@@ -704,46 +721,105 @@ pullSecrets:
     password: secret/pull/quay
 envValues:
   - envVar: BUSYBOX_SECRET_VARIABLE
-    secret: secret/busybox/dummy
+    secret: jobs/demo/demovalue
   - envVar: BUSYBOX_PLAIN_VARIABLE
     value: THIS-IS-A-DUMMY-PLAIN-VAR-FOR-TESTING
-slack:
-  channel: #team-migrations
+  - envVar: GIT_COMMIT
+    env: GIT_COMMIT
+  - envVar: JOB_NAME
+    env: JOB_NAME
+helmRepos:
+  - name: incubator
+    url: https://kubernetes-charts-incubator.storage.googleapis.com
 builds:
-  - image: maratoid/pipeline-busybox
+  - image: bash:latest
+    script: scripts/generatefile.sh
+    shell: /bin/bash
+  - image: bash:latest
+    commands: |
+      echo "echo \"test from inline: running in ${PIPELINE_WORKSPACE}\" > testfrominline.sh
+    shell: /bin/bash
+  - image: maratoid/pipeline-demo
     buildArgs: 
-      TEST_ARG: "something not default"
-    context: pipeline-busybox
-    chart: pipeline-busybox
+      - arg: GIT_COMMIT
+        env: GIT_COMMIT
+      - arg: JOB_NAME
+        env: JOB_NAME
+      - arg: SECRET_ARG
+        secret: jobs/demo/demovalue
+    context: pipeline-demo
+    dockerContext: .
+    chart: pipeline-demo
     value: images.image
 deployments:
-  - chart: pipeline-busybox
+  - chart: pipeline-demo
     timeout: 600
     retries: 2
-    release: pipeline-busybox
+    release: pipeline-demo
     test: 
       values:
         - key: pipeline.secretval
-          secret: secret/busybox/dummy
+          secret: jobs/demo/nested/test
         - key: pipeline.plainval
           value: THIS-IS-A-DUMMY-PLAIN-VAR-FOR-TESTING
     stage: 
       values:
         - key: pipeline.secretval
-          secret: secret/busybox/dummy
+          secret: jobs/demo/nested/stage
         - key: pipeline.plainval
           value: THIS-IS-A-DUMMY-PLAIN-VAR-FOR-TESTING
+        - key: ingress.staging.name
+          value: pipelinedemo-staging-ingress
+        - key: ingress.staging.host
+          value: pipelinedemo.staging.cnct.io
+        - key: ingress.staging.secret
+          value: pipelinedemo-staging-secret
+        - key: ingress.staging.path
+          value: /
       tests:
         - image: bash:latest
           script: scripts/stageTest.sh
-          shell: /bin/bash
+        - image: quay.io/maratoid/helm:latest
+          commands: |
+            echo "Testing KUBECONFIG (${KUBECONFIG}) injection:" 
+            kubectl version
+            kubectl get po -n pipeline-tools
     prod: 
       values:
         - key: pipeline.secretval
-          secret: secret/busybox/dummy
+          secret: jobs/demo/nested/prod
         - key: pipeline.plainval
           value: THIS-IS-A-DUMMY-PLAIN-VAR-FOR-TESTING
+        - key: ingress.prod.name
+          value: pipelinedemo-prod-ingress
+        - key: ingress.prod.host
+          value: pipelinedemo.prod.cnct.io
+        - key: ingress.prod.secret
+          value: pipelinedemo-prod-secret
+        - key: ingress.prod.path
+          value: /
+        - key: ingress.friendly.name
+          value: pipelinedemo-friendly-ingress
+        - key: ingress.friendly.host
+          value: pipelinealt.cnct.io
+        - key: ingress.friendly.secret
+          value: pipelinedemo-friendly-secret
+        - key: ingress.friendly.path
+          value: /
+tls:
+  staging:
+    - name: pipelinedemo-staging-cert
+      secretName: pipelinedemo-staging-secret
+      dnsName: pipelinedemo.staging.cnct.io
+  prod:
+    - name: pipelinedemo-prod-cert
+      secretName: pipelinedemo-prod-secret
+      dnsName: pipelinedemo.prod.cnct.io
+    - name: pipelinedemo-friendly-cert
+      secretName: pipelinedemo-friendly-secret
+      dnsName: pipelinealt.cnct.io
 test:
+  cluster: secret/test-cluster/config
   beforeScript:
     script: scripts/testBefore.sh
     shell: /bin/bash
@@ -751,20 +827,37 @@ test:
     image: alpine:latest
     script: scripts/testAfter.sh
 stage:
+  namespace: staging
+  cluster: secret/staging-cluster/config
+  deploy: true
   beforeScript:
     script: scripts/stageBefore.sh
     shell: /bin/bash
   afterScript:
     image: alpine:latest
-    script: scripts/stageAfter.sh    
+    commands: |
+      echo "THIS IS STAGE AFTER SCRIPT EXECUTING"
+      echo "INJECTED VARS"
+      echo "BUSYBOX_SECRET_VARIABLE is $BUSYBOX_SECRET_VARIABLE"
+      echo "BUSYBOX_PLAIN_VARIABLE is $BUSYBOX_PLAIN_VARIABLE"
+
+      echo "PIPELINE VARIABLES"
+      echo "PIPELINE_PROD_NAMESPACE is $PIPELINE_PROD_NAMESPACE"
+      echo "PIPELINE_STAGE_NAMESPACE is $PIPELINE_STAGE_NAMESPACE"
+      echo "PIPELINE_BUILD_ID is $PIPELINE_BUILD_ID"
+      echo "PIPELINE_JOB_NAME is $PIPELINE_JOB_NAME"
+      echo "PIPELINE_BUILD_NUMBER is $PIPELINE_BUILD_NUMBER"
+      echo "PIPELINE_WORKSPACE is $PIPELINE_WORKSPACE"   
 prod: 
+  namespace: prod
+  cluster: secret/prod-cluster/config
   beforeScript:
     script: scripts/prodBefore.sh
     shell: /bin/bash
   afterScript:
     image: alpine:latest
     script: scripts/prodAfter.sh 
-  doDeploy: versionfile
+  doDeploy: auto
 ```
 
 ## User scripts
@@ -787,20 +880,27 @@ The following environment variables are injected into all userscript containers:
 | `PIPELINE_BUILD_NUMBER` | Jenksins build number | `1` |
 | `PIPELINE_WORKSPACE` | Path to Jenkins workspace in the container | `/home/jenkins/workspace/test_PR-6-U5VHDHDXSBXPPAUMV2CWOZMLZN63RMD3TNPQVTEDDUQI553ZSCRA` |
 
+The following environment vairables are injected into `tests` containers only:
+
+| Variable |  Purpose |  Example | 
+|:---       |:---:     |:---:    |
+| `KUBECONFIG` | Location of the target cluster kube config file |
+
+
 ## cert-manager and TLS support
 
 If you have [jetstack cert-manager](https://github.com/jetstack/cert-manager) deployed in the production namespace you pipeline can generate "Let's Encrypt" TLS certificate requests for prod and staging namespaces, based on the information in the deployed `Ingress` objects
 
 Currently only AWS Route53 ACME verification is supported with `cert-manager`
 
-Once `cert-manager` is deployed, create two `ClusterIssuer` objects, one for `prod`, one for `staging` and set the `tls` section in `defaults.yaml` to the names of the two issuers.  
+Once `cert-manager` is deployed, create two `ClusterIssuer` objects, one for `<name of prod namespace>`, one for `<name of staging namespace` and set the `tls` section in `defaults.yaml` to the names of the two issuers.  
 Then setup the `tls` section of your `pipeline.yaml` as follows:
 
 Setting | Description
 | :--- | :---: |
-`tls.staging.[].name` | Name of the `Certificate` CRD to be created
-`tls.staging.[].secretName` | Name of the Kubernetes secret that will contain the generated TLS certificate
-`tls.staging.[].dnsName` | DNS name for which the TLS certificate will be generated 
+`tls.<namespace>.[].name` | Name of the `Certificate` CRD to be created
+`tls.<namespace>.[].secretName` | Name of the Kubernetes secret that will contain the generated TLS certificate
+`tls.<namespace>.[].dnsName` | DNS name for which the TLS certificate will be generated 
 
 Then in your `Ingress` templates you can use secret name specified in `tls.staging.[].secretName` as the TLS secret. Example:
 

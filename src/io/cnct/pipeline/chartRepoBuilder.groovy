@@ -81,6 +81,13 @@ def postCleanup(err) {
           sh("kubectl delete pvc jenkins-varlibdocker-${kubeName(env.JOB_NAME)} --namespace ${defaults.jenkinsNamespace} || true")
           // always cleanup storageclass
           sh("kubectl delete storageclass jenkins-storageclass-${kubeName(env.JOB_NAME)} || true")
+          // always clean up pull secrets
+          def deletePullSteps = [:]
+          for (pull in pipeline.pullSecrets ) {
+            def deleteSecrets = "kubectl delete secret ${pull.name}-${kubeName(env.JOB_NAME)} --namespace=${defaults.jenkinsNamespace} || true"
+            deletePullSteps["${pull.name}-${kubeName(env.JOB_NAME)}"] = { sh(deleteSecrets) }
+          }
+          parallel deletePullSteps
 
           if (isPRBuild || isSelfTest) {
 
@@ -93,7 +100,7 @@ def postCleanup(err) {
               "KUBECONFIG=${env.BUILD_ID}-test.kubeconfig"
             ]) {
               sh("helm list --namespace ${kubeName(env.JOB_NAME)} --short --failed --tiller-namespace ${pipeline.helm.namespace} | while read line; do helm delete \$line --purge --tiller-namespace ${pipeline.helm.namespace}; done")
-              sh("helm list --namespace ${defaults.stageNamespace} --short --failed --tiller-namespace ${pipeline.helm.namespace} | while read line; do helm delete \$line --purge --tiller-namespace ${pipeline.helm.namespace}; done")
+              sh("helm list --namespace ${pipeline.stage.namespace} --short --failed --tiller-namespace ${pipeline.helm.namespace} | while read line; do helm delete \$line --purge --tiller-namespace ${pipeline.helm.namespace}; done")
             }
 
             // additional cleanup on error that destroy handler might have missed
@@ -139,9 +146,6 @@ def initializeHandler() {
   // TODO: this would be initialized from a job parameter.
   isSelfTest = false
 
-  for (pull in pipeline.pullSecrets ) {
-    pullSecrets += pull.name
-  }
 
   // collect the env values to be injected
   pipelineEnvVariables += containerEnvVar(key: 'DOCKER_HOST', value: 'localhost:2375')
@@ -201,6 +205,7 @@ def initializeHandler() {
         }
 
         stage('Create image pull secrets') {
+          def createPullSteps = [:]
           for (pull in pipeline.pullSecrets ) {
             withCredentials([string(credentialsId: defaults.vault.credentials, variable: 'VAULT_TOKEN')]) {
               def vaultToken = env.VAULT_TOKEN
@@ -209,21 +214,21 @@ def initializeHandler() {
                 vaultToken,
                 pull.password)
 
-              def deleteSecrets = """
-                kubectl delete secret ${pull.name} --namespace=${defaults.jenkinsNamespace} || true"""
               def createSecrets = """
                 set +x
-                kubectl create secret docker-registry ${pull.name} \
+                kubectl create secret docker-registry ${pull.name}-${kubeName(env.JOB_NAME)} \
                   --docker-server=${pull.server} \
                   --docker-username=${pull.username} \
                   --docker-password='${secretVal}' \
                   --docker-email='${pull.email}' --namespace=${defaults.jenkinsNamespace}
                 set -x"""
 
-              sh(deleteSecrets)
-              sh(createSecrets)
+              pullSecrets += "${pull.name}-${kubeName(env.JOB_NAME)}"
+              createPullSteps["${pull.name}-${kubeName(env.JOB_NAME)}"] = { sh(createSecrets) }
             }
           }
+
+          parallel createPullSteps
         }
 
         stage('Get target cluster configuration') {
@@ -372,7 +377,9 @@ def buildsTestHandler(scmVars) {
   def gitCommit = scmVars.GIT_COMMIT
   def chartsWithContainers = []
 
-  def parallelBuildSteps = [:]
+  def parallelBinaryBuildSteps = [:]
+  def binaryBuildCounter = 0
+  def parallelContainerBuildSteps = [:]
   def parallelTagSteps = [:]
   def parallelPushSteps = [:]
 
@@ -381,62 +388,82 @@ def buildsTestHandler(scmVars) {
   // get tag text
   def useTag = makeDockerTag(defaults, gitCommit)
 
-  for (container in pipeline.builds) {
-    // build steps
-    def buildCommandString = "docker build -t\
-      ${defaults.docker.registry}/${container.image}:${useTag} --pull " 
-    if (container.buildArgs) {
-      def argMap = [:]
-
-      for (buildArg in container.buildArgs) {
-        if (buildArg.secret) {
-          withCredentials([string(credentialsId: defaults.vault.credentials, variable: 'VAULT_TOKEN')]) {
-            def vaultToken = env.VAULT_TOKEN
-            def secretVal = getVaultKV(
-              defaults,
-              vaultToken,
-              buildArg.secret)
-            argMap += ["${buildArg.arg}" : "${secretVal.trim()}"]
+  container('vault') {
+    stage('Collect build targets') {
+      for (container in pipeline.builds) {
+        if (container.script || container.commands) {
+          def description = "Executing binary build ${binaryBuildCounter} using ${container.image}"
+          def _container = container
+          parallelBinaryBuildSteps["binary-build-${binaryBuildCounter}"] = { 
+            executeUserScript(description, _container) 
           }
-        } else if (buildArg.env) {
-          
-          def valueFromEnv = ""
-          if (env[buildArg.env]) {
-            valueFromEnv = env[buildArg.env]
-          } else {
-            valueFromEnv = scmVars[buildArg.env]
-          }
-
-          argMap += ["${buildArg.arg}" : "${valueFromEnv.trim()}"]  
+          binaryBuildCounter += 1 
         } else {
-          argMap += ["${buildArg.arg}" : "${buildArg.value.trim()}"]
+          // build steps
+          def buildCommandString = "docker build -t\
+            ${defaults.docker.registry}/${container.image}:${useTag} --pull " 
+          if (container.buildArgs) {
+            def argMap = [:]
+
+            for (buildArg in container.buildArgs) {
+              if (buildArg.secret) {
+                withCredentials([string(credentialsId: defaults.vault.credentials, variable: 'VAULT_TOKEN')]) {
+                  def vaultToken = env.VAULT_TOKEN
+                  def secretVal = getVaultKV(
+                    defaults,
+                    vaultToken,
+                    buildArg.secret)
+                  argMap += ["${buildArg.arg}" : "${secretVal.trim()}"]
+                }
+              } else if (buildArg.env) {
+                
+                def valueFromEnv = ""
+                if (env[buildArg.env]) {
+                  valueFromEnv = env[buildArg.env]
+                } else {
+                  valueFromEnv = scmVars[buildArg.env]
+                }
+
+                argMap += ["${buildArg.arg}" : "${valueFromEnv.trim()}"]  
+              } else {
+                argMap += ["${buildArg.arg}" : "${buildArg.value.trim()}"]
+              }
+            }
+
+            buildCommandString += mapToParams('--build-arg', argMap)
+          }
+          buildCommandString += " ${container.dockerContext} --file ${dockerfileLocation(defaults, container.context)}"
+
+          parallelContainerBuildSteps["${container.image.replaceAll('/','_')}-build"] = { sh(buildCommandString) }
+
+
+          // tag steps
+          def tagCommandString = "docker tag ${defaults.docker.registry}/${container.image}:${useTag}\
+           ${defaults.docker.registry}/${container.image}:${defaults.docker.testTag}"
+          parallelTagSteps["${container.image.replaceAll('/','_')}-tag"] = { sh(tagCommandString) }
+
+          // push steps
+          def pushShaCommandString = "docker push ${defaults.docker.registry}/${container.image}:${useTag}"
+          def pushTagCommandString = "docker push ${defaults.docker.registry}/${container.image}:${defaults.docker.testTag}"
+          
+          parallelPushSteps["${container.image.replaceAll('/','_')}-push-sha"] = { sh(pushShaCommandString) }
+          parallelPushSteps["${container.image.replaceAll('/','_')}-push-tag"] = { sh(pushTagCommandString) }
+
+          
+          if (container.chart) {
+            chartsWithContainers += container
+          }
         }
       }
-
-      buildCommandString += mapToParams('--build-arg', argMap)
-    }
-    buildCommandString += " ${container.dockerContext} --file ${dockerfileLocation(defaults, container.context)}"
-
-    parallelBuildSteps["${container.image.replaceAll('/','_')}-build"] = { sh(buildCommandString) }
-
-
-    // tag steps
-    def tagCommandString = "docker tag ${defaults.docker.registry}/${container.image}:${useTag}\
-     ${defaults.docker.registry}/${container.image}:${defaults.docker.testTag}"
-    parallelTagSteps["${container.image.replaceAll('/','_')}-tag"] = { sh(tagCommandString) }
-
-    // push steps
-    def pushShaCommandString = "docker push ${defaults.docker.registry}/${container.image}:${useTag}"
-    def pushTagCommandString = "docker push ${defaults.docker.registry}/${container.image}:${defaults.docker.testTag}"
-    
-    parallelPushSteps["${container.image.replaceAll('/','_')}-push-sha"] = { sh(pushShaCommandString) }
-    parallelPushSteps["${container.image.replaceAll('/','_')}-push-tag"] = { sh(pushTagCommandString) }
-
-    
-    if (container.chart) {
-      chartsWithContainers += container
     }
   }
+
+  // build binaries
+  stage('Build binaries') {
+    parallel parallelBinaryBuildSteps
+  }
+
+  // build containers
   container('docker') {
     stage("Building docker files, tagging with ${gitCommit} and ${defaults.docker.testTag} and pushing.") {
       withCredentials(
@@ -447,7 +474,7 @@ def buildsTestHandler(scmVars) {
         sh('docker login --username $DOCKER_USER --password $DOCKER_PASSWORD ' + defaults.docker.registry)
       }
 
-      parallel parallelBuildSteps
+      parallel parallelContainerBuildSteps
       parallel parallelTagSteps
       parallel parallelPushSteps
 
@@ -484,17 +511,19 @@ def buildsStageHandler(scmVars) {
   def useTag = makeDockerTag(defaults, gitCommit)
 
   for (container in pipeline.builds) {
-    // tag steps
-    def tagCommandString = "docker tag ${defaults.docker.registry}/${container.image}:${useTag} \
-     ${defaults.docker.registry}/${container.image}:${defaults.docker.stageTag}"
-    parallelTagSteps["${container.image.replaceAll('/','_')}-tag"] = { sh(tagCommandString) }
+    if (!container.script && !container.commands) {
+      // tag steps
+      def tagCommandString = "docker tag ${defaults.docker.registry}/${container.image}:${useTag} \
+       ${defaults.docker.registry}/${container.image}:${defaults.docker.stageTag}"
+      parallelTagSteps["${container.image.replaceAll('/','_')}-tag"] = { sh(tagCommandString) }
 
-    // push steps
-    def pushTagCommandString = "docker push ${defaults.docker.registry}/${container.image}:${defaults.docker.stageTag}"
-    parallelPushSteps["${container.image.replaceAll('/','_')}-push-tag"] = { sh(pushTagCommandString) }
+      // push steps
+      def pushTagCommandString = "docker push ${defaults.docker.registry}/${container.image}:${defaults.docker.stageTag}"
+      parallelPushSteps["${container.image.replaceAll('/','_')}-push-tag"] = { sh(pushTagCommandString) }
 
-    if (container.chart) {
-      chartsWithContainers += container
+      if (container.chart) {
+        chartsWithContainers += container
+      }
     }
   }
 
@@ -535,6 +564,8 @@ def buildsProdHandler(scmVars) {
   def gitCommit = scmVars.GIT_COMMIT
   def chartsWithContainers = []
 
+  def parallelBinaryBuildSteps = [:]
+  def binaryBuildCounter = 0
   def parallelBuildSteps = [:]
   def parallelTagSteps = [:]
   def parallelPushSteps = [:]
@@ -547,60 +578,78 @@ def buildsProdHandler(scmVars) {
   // Collect all the docker build steps as 'docker build' command string
   // for later execution in parallel
   // Also memoize the builds objects, if they are connected to in-repo charts
-  for (container in pipeline.builds) {
-    // build steps
-    def buildCommandString = "docker build -t \
-      ${defaults.docker.registry}/${container.image}:${useTag} --pull " 
-    if (container.buildArgs) {
-      def argMap = [:]
-
-      for (buildArg in container.buildArgs) {
-        if (buildArg.secret) {
-          withCredentials([string(credentialsId: defaults.vault.credentials, variable: 'VAULT_TOKEN')]) {
-            def vaultToken = env.VAULT_TOKEN
-            def secretVal = getVaultKV(
-              defaults,
-              vaultToken,
-              buildArg.secret)
-            argMap += ["${buildArg.arg}" : "${secretVal.trim()}"]
+  container('vault') {
+    stage('Collect build targets') {
+      for (container in pipeline.builds) {
+        if (container.script || container.commands) {
+          def description = "Executing binary build ${binaryBuildCounter} using ${container.image}"
+          def _container = container
+          parallelBinaryBuildSteps["binary-build-${binaryBuildCounter}"] = { 
+            executeUserScript(description, _container) 
           }
-        } else if (buildArg.env) {
-          
-          def valueFromEnv = ""
-          if (env[buildArg.env]) {
-            valueFromEnv = env[buildArg.env]
-          } else {
-            valueFromEnv = scmVars[buildArg.env]
-          }
-
-          argMap += ["${buildArg.arg}" : "${valueFromEnv.trim()}"]  
+          binaryBuildCounter += 1 
         } else {
-          argMap += ["${buildArg.arg}" : "${buildArg.value.trim()}"]
+          // build steps
+          def buildCommandString = "docker build -t \
+            ${defaults.docker.registry}/${container.image}:${useTag} --pull " 
+          if (container.buildArgs) {
+            def argMap = [:]
+
+            for (buildArg in container.buildArgs) {
+              if (buildArg.secret) {
+                withCredentials([string(credentialsId: defaults.vault.credentials, variable: 'VAULT_TOKEN')]) {
+                  def vaultToken = env.VAULT_TOKEN
+                  def secretVal = getVaultKV(
+                    defaults,
+                    vaultToken,
+                    buildArg.secret)
+                  argMap += ["${buildArg.arg}" : "${secretVal.trim()}"]
+                }
+              } else if (buildArg.env) {
+                
+                def valueFromEnv = ""
+                if (env[buildArg.env]) {
+                  valueFromEnv = env[buildArg.env]
+                } else {
+                  valueFromEnv = scmVars[buildArg.env]
+                }
+
+                argMap += ["${buildArg.arg}" : "${valueFromEnv.trim()}"]  
+              } else {
+                argMap += ["${buildArg.arg}" : "${buildArg.value.trim()}"]
+              }
+            }
+            
+            buildCommandString += mapToParams('--build-arg', argMap)
+          }
+          buildCommandString += " ${container.dockerContext} --file ${dockerfileLocation(defaults, container.context)}"
+          parallelBuildSteps["${container.image.replaceAll('/','_')}-build"] = { sh(buildCommandString) }
+
+          def tagCommandString = "docker tag ${defaults.docker.registry}/${container.image}:${useTag} \
+           ${defaults.docker.registry}/${container.image}:${defaults.docker.prodTag}"
+          parallelTagSteps["${container.image.replaceAll('/','_')}-tag"] = { sh(tagCommandString) }
+
+
+          def pushShaCommandString = "docker push ${defaults.docker.registry}/${container.image}:${useTag}"
+          def pushTagCommandString = "docker push ${defaults.docker.registry}/${container.image}:${defaults.docker.prodTag}"
+          parallelPushSteps["${container.image.replaceAll('/','_')}-push-tag"] = { sh(pushTagCommandString) }
+          parallelPushSteps["${container.image.replaceAll('/','_')}-push-sha"] = { sh(pushShaCommandString) }
+
+          if (container.chart) {
+            chartsWithContainers += container
+          }
         }
       }
-      
-      buildCommandString += mapToParams('--build-arg', argMap)
-    }
-    buildCommandString += " ${container.dockerContext} --file ${dockerfileLocation(defaults, container.context)}"
-    parallelBuildSteps["${container.image.replaceAll('/','_')}-build"] = { sh(buildCommandString) }
-
-    def tagCommandString = "docker tag ${defaults.docker.registry}/${container.image}:${useTag} \
-     ${defaults.docker.registry}/${container.image}:${defaults.docker.prodTag}"
-    parallelTagSteps["${container.image.replaceAll('/','_')}-tag"] = { sh(tagCommandString) }
-
-
-    def pushShaCommandString = "docker push ${defaults.docker.registry}/${container.image}:${useTag}"
-    def pushTagCommandString = "docker push ${defaults.docker.registry}/${container.image}:${defaults.docker.prodTag}"
-    parallelPushSteps["${container.image.replaceAll('/','_')}-push-tag"] = { sh(pushTagCommandString) }
-    parallelPushSteps["${container.image.replaceAll('/','_')}-push-sha"] = { sh(pushShaCommandString) }
-
-    if (container.chart) {
-      chartsWithContainers += container
     }
   }
 
+  // build binaries
+  stage('Build binaries') {
+    parallel parallelBinaryBuildSteps
+  }
+
   container('docker') {
-    stage("Tagging with ${defaults.docker.prodTag} and pushing.") {
+    stage("Building docker files, tagging with ${defaults.docker.prodTag} and pushing.") {
       withCredentials(
         [usernamePassword(
           credentialsId: defaults.docker.credentials, 
@@ -841,7 +890,7 @@ def deployToStageHandler(scmVars) {
             set +x
             helm init --client-only
             helm dependency update --debug ${chartLocation(defaults, chart.chart)}
-            helm upgrade --install --tiller-namespace ${pipeline.helm.namespace} --wait --timeout ${chart.timeout} --namespace ${defaults.stageNamespace} ${chart.release}-${defaults.stageNamespace} ${chartLocation(defaults, chart.chart)}""" 
+            helm upgrade --install --tiller-namespace ${pipeline.helm.namespace} --wait --timeout ${chart.timeout} --namespace ${pipeline.stage.namespace} ${chart.release}-${pipeline.stage.namespace} ${chartLocation(defaults, chart.chart)}""" 
             
             def setParams = envMapToSetParams(chart.stage.values)
             commandString += setParams
@@ -858,7 +907,7 @@ def deployToStageHandler(scmVars) {
         }
 
         parallel deploySteps 
-        createCert(defaults.stageNamespace)            
+        createCert(pipeline.stage.namespace)            
       }
     }
   }
@@ -909,7 +958,7 @@ def deployToProdHandler(scmVars) {
 
             commandString = """${commandString}
             helm dependency update --debug ${chartLocation(defaults, chart.chart)}
-            helm upgrade --install --wait --timeout ${chart.timeout} --tiller-namespace ${pipeline.helm.namespace} --repo https://${defaults.helm.registry} --version ${chartYaml.version} --namespace ${defaults.prodNamespace} ${chart.release} ${chart.chart} """
+            helm upgrade --install --wait --timeout ${chart.timeout} --tiller-namespace ${pipeline.helm.namespace} --repo https://${defaults.helm.registry} --version ${chartYaml.version} --namespace ${pipeline.prod.namespace} ${chart.release} ${chart.chart} """
             
             def setParams = envMapToSetParams(chart.prod.values)
             commandString += setParams
@@ -927,7 +976,7 @@ def deployToProdHandler(scmVars) {
       }
 
       parallel deploySteps
-      createCert(defaults.prodNamespace)                    
+      createCert(pipeline.prod.namespace)                    
     }
   }
 
@@ -1011,8 +1060,8 @@ def helmTestHandler(scmVars) {
                   \$value := .metadata.annotations}}{{\$name}} {{\$key}}:{{\$value}}+{{end}}{{end}}'\
                   | tr '+' '\\n' | grep -e helm.sh/hook:.*test-success -e helm.sh/hook:.*test-failure |\
                   cut -d' ' -f1 | while read line;\
-                  do kubectl logs \$line --namespace ${kubeName(env.JOB_NAME)};\
-                  kubectl delete pod \$line --namespace ${kubeName(env.JOB_NAME)}; done"
+                  do kubectl logs \$line --namespace ${kubeName(env.JOB_NAME)} --kubeconfig=${env.BUILD_ID}-test.kubeconfig;\
+                  kubectl delete pod \$line --namespace ${kubeName(env.JOB_NAME)} --kubeconfig=${env.BUILD_ID}-test.kubeconfig; done"
               sh(logString)
             }
           }
@@ -1028,7 +1077,7 @@ def testTestHandler(scmVars) {
   for (config in pipeline.deployments) {
     if (config.test.tests) {
       for (test in config.test.tests) {
-        executeUserScript('Executing test test scripts', test)
+        executeUserScript('Executing test test scripts', test, ["KUBECONFIG=${pwd()}/${env.BUILD_ID}-test.kubeconfig"])
       }
     }
   }
@@ -1042,7 +1091,7 @@ def stageTestHandler(scmVars) {
   for (config in pipeline.deployments) {
     if (config.stage.tests) {
       for (test in config.stage.tests) {
-        executeUserScript('Executing staging test scripts', test)
+        executeUserScript('Executing staging test scripts', test, ["KUBECONFIG=${pwd()}/${env.BUILD_ID}-staging.kubeconfig"])
       }
     }
   }
@@ -1185,6 +1234,14 @@ def getScriptImages() {
     }
   }
 
+  for (build in pipeline.builds) {
+    if (build.script || build.commands ) {
+      check(scriptContainers, [name: containerName(build.image),
+        image: build.image,
+        shell: build.shell])
+    }
+  }
+
   return scriptContainers
 }
 
@@ -1195,22 +1252,30 @@ def getScriptImages() {
 // script: path/to/some-script.sh
 // ---
 // yaml definition 
-def executeUserScript(stageText, scriptObj) {
+def executeUserScript(stageText, scriptObj, additionalEnvs = []) {
   if (scriptObj) {
     stage(stageText) {
       container(containerName(scriptObj.image)) {
 
+        // unstash kubeconfig files
+        unstashCheck("${env.BUILD_ID}-kube-configs".replaceAll('-','_'))
+
         withEnv(
           [
-            "PIPELINE_PROD_NAMESPACE=${defaults.prodNamespace}",
-            "PIPELINE_STAGE_NAMESPACE=${defaults.stageNamespace}",
+            "PIPELINE_PROD_NAMESPACE=${pipeline.prod.namespace}",
+            "PIPELINE_STAGE_NAMESPACE=${pipeline.stage.namespace}",
             "PIPELINE_TEST_NAMESPACE=${kubeName(env.JOB_NAME)}",
             "PIPELINE_BUILD_ID=${env.BUILD_ID}",
             "PIPELINE_JOB_NAME=${env.JOB_NAME}",
             "PIPELINE_BUILD_NUMBER=${env.BUILD_NUMBER}",
             "PIPELINE_WORKSPACE=${env.WORKSPACE}"
-          ]) {
-          sh(readFile(scriptObj.script))
+          ] + additionalEnvs) {
+          if (scriptObj.commands) {
+            sh(scriptObj.commands)
+          }
+          if (scriptObj.script) {
+            sh(readFile(scriptObj.script))
+          }
         }
       }
     }
@@ -1227,11 +1292,11 @@ def createCert(namespace) {
   def defaultIssuerName
   def kubeconfigStr
   switch (namespace) {
-    case defaults.stageNamespace:
+    case pipeline.stage.namespace:
       defaultIssuerName = defaults.tls.stagingIssuer
       kubeconfigStr = "--kubeconfig=${env.BUILD_ID}-staging.kubeconfig"
       break
-    case defaults.prodNamespace:
+    case pipeline.prod.namespace:
       defaultIssuerName = defaults.tls.prodIssuer
       kubeconfigStr = "--kubeconfig=${env.BUILD_ID}-prod.kubeconfig"
       break

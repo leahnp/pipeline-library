@@ -9,7 +9,7 @@ def setDefaults(rawSettings, defaults) {
     if (!rawSettings.beforeScript.shell) {
       rawSettings.beforeScript.shell = '/bin/sh'
     }
-    if (!rawSettings.beforeScript.script) {
+    if (!rawSettings.beforeScript.script && !rawSettings.beforeScript.commands) {
       rawSettings.beforeScript = null
     }
   }
@@ -19,7 +19,7 @@ def setDefaults(rawSettings, defaults) {
     if (!rawSettings.afterScript.shell) {
       rawSettings.afterScript.shell = '/bin/sh'
     }
-    if (!rawSettings.afterScript.script) {
+    if (!rawSettings.afterScript.script && !rawSettings.afterScript.commands) {
       rawSettings.afterScript = null
     }
   }
@@ -120,36 +120,49 @@ def setDefaults(rawSettings, defaults) {
     
   if (rawSettings.builds) {
     for (entry in rawSettings.builds) {
-      if (!entry.context) {
-        error("builds items must have 'context' field")
-      }
-
-      if (!entry.dockerContext) {
-        entry.dockerContext = "./builds/${entry.context}"
-      }
-
-      if (!entry.image) {
-        error("builds items must have 'image' field")
-      }
-
-      if (!entry.buildArgs) {
-        entry.buildArgs = []
-      }
-
-      for (arg in entry.buildArgs) {
-        if (!arg.arg) {
-          error("Each builds buildArg items must have 'arg' field")
+      if (entry.script || entry.commands) {
+        if (!entry.image) {
+          error("Can't have build entries with 'script or 'command' AND no 'image'")
         }
-      }
 
-      if (entry.test) {
-        entry.test.image = 
-          entry.test.image ? entry.test.image : defaults.images.script
-        entry.test.shell = 
-          entry.test.shell ? entry.test.shell : 'sh'
+        if (entry.context) {
+          error("Can't have build entries with 'script or 'command' AND 'context'")
+        }
 
-        if (!entry.test.script) {
-          entry.test = null
+        if (entry.dockerContext) {
+          error("Can't have build entries with 'script or 'command' AND 'dockerContext'")
+        }
+
+        if (entry.context) {
+          error("Can't have build entries with 'script or 'command' AND 'context'")
+        }
+
+        if (entry.buildArgs) {
+          error("Can't have build entries with 'script or 'command' AND 'buildArgs'")
+        }
+
+        entry.shell = entry.shell ? entry.shell : defaults.shell
+      } else {
+        if (!entry.context) {
+          error("builds items must have 'context' field")
+        }
+
+        if (!entry.dockerContext) {
+          entry.dockerContext = "./builds/${entry.context}"
+        }
+
+        if (!entry.image) {
+          error("builds items must have 'image' field")
+        }
+
+        if (!entry.buildArgs) {
+          entry.buildArgs = []
+        }
+
+        for (arg in entry.buildArgs) {
+          if (!arg.arg) {
+            error("Each builds buildArg items must have 'arg' field")
+          }
         }
       }
     }
@@ -159,36 +172,49 @@ def setDefaults(rawSettings, defaults) {
 
   if (rawSettings.rootfs) {
     for (entry in rawSettings.rootfs) {
-      if (!entry.context) {
-        error("rootfs items must have 'context' field")
-      }
-
-      if (!entry.dockerContext) {
-        entry.dockerContext = "./rootfs/${entry.context}"
-      }
-
-      if (!entry.image) {
-        error("rootfs items must have 'image' field")
-      }
-
-      if (!entry.buildArgs) {
-        entry.buildArgs = []
-      }
-
-      for (arg in entry.buildArgs) {
-        if (!arg.arg) {
-          error("Each rootfs buildArg items must have 'arg' field")
+      if (entry.script || entry.commands) {
+        if (!entry.image) {
+          error("Can't have rootfs entries with 'script or 'command' AND no 'image'")
         }
-      }
 
-      if (entry.test) {
-        entry.test.image = 
-          entry.test.image ? entry.test.image : defaults.images.script
-        entry.test.shell = 
-          entry.test.shell ? entry.test.shell : 'sh'
+        if (entry.context) {
+          error("Can't have rootfs entries with 'script or 'command' AND 'context'")
+        }
 
-        if (!entry.test.script) {
-          entry.test = null
+        if (entry.dockerContext) {
+          error("Can't have rootfs entries with 'script or 'command' AND 'dockerContext'")
+        }
+
+        if (entry.context) {
+          error("Can't have rootfs entries with 'script or 'command' AND 'context'")
+        }
+
+        if (entry.buildArgs) {
+          error("Can't have rootfs entries with 'script or 'command' AND 'buildArgs'")
+        }
+
+        entry.shell = entry.shell ? entry.shell : defaults.shell
+      } else {
+        if (!entry.context) {
+          error("rootfs items must have 'context' field")
+        }
+
+        if (!entry.dockerContext) {
+          entry.dockerContext = "./rootfs/${entry.context}"
+        }
+
+        if (!entry.image) {
+          error("rootfs items must have 'image' field")
+        }
+
+        if (!entry.buildArgs) {
+          entry.buildArgs = []
+        }
+
+        for (arg in entry.buildArgs) {
+          if (!arg.arg) {
+            error("Each rootfs buildArg items must have 'arg' field")
+          }
         }
       }
     }
@@ -240,7 +266,7 @@ def setDefaults(rawSettings, defaults) {
       for (test in config.stage.tests) {
         test.image = test.image ? test.image : defaults.images.script
         test.shell = test.shell ? test.shell : defaults.shell
-        if (!test.script) {
+        if (!test.script && !test.commands) {
           test = null
         }
       }
@@ -295,7 +321,7 @@ def setDefaults(rawSettings, defaults) {
       for (test in config.stage.tests) {
         test.image = test.image ? test.image : defaults.images.script
         test.shell = test.shell ? test.shell : defaults.shell
-        if (!test.script) {
+        if (!test.script && !test.commands) {
           test = null
         }
       }
@@ -317,7 +343,7 @@ def setDefaults(rawSettings, defaults) {
     rawSettings.test = [:]
   }
 
-  if (!rawSettings.test.cluster) {
+  if (!rawSettings.test.namespace) {
     rawSettings.test.cluster = defaults.targets.testCluster
   }
 
@@ -327,7 +353,7 @@ def setDefaults(rawSettings, defaults) {
     if (!rawSettings.test.beforeScript.shell) {
       rawSettings.test.beforeScript.shell = '/bin/sh'
     }
-    if (!rawSettings.test.beforeScript.script) {
+    if (!rawSettings.test.beforeScript.script && !rawSettings.test.beforeScript.commands) {
       rawSettings.test.beforeScript = null
     }
   }
@@ -337,7 +363,7 @@ def setDefaults(rawSettings, defaults) {
     if (!rawSettings.test.afterScript.shell) {
       rawSettings.test.afterScript.shell = '/bin/sh'
     }
-    if (!rawSettings.test.afterScript.script) {
+    if (!rawSettings.test.afterScript.script && !rawSettings.test.afterScript.commands) {
       rawSettings.test.afterScript = null
     }
   }
@@ -345,6 +371,9 @@ def setDefaults(rawSettings, defaults) {
   // check staging
   if (!rawSettings.stage) {
     rawSettings.stage = [:]
+  }
+  if (!rawSettings.stage.namespace) {
+    rawSettings.stage.namespace = defaults.stageNamespace
   }
   if (!rawSettings.stage.cluster) {
     rawSettings.stage.cluster = defaults.targets.stagingCluster
@@ -358,7 +387,7 @@ def setDefaults(rawSettings, defaults) {
     if (!rawSettings.stage.beforeScript.shell) {
       rawSettings.stage.beforeScript.shell = '/bin/sh'
     }
-    if (!rawSettings.stage.beforeScript.script) {
+    if (!rawSettings.stage.beforeScript.script && !rawSettings.stage.beforeScript.commands) {
       rawSettings.stage.beforeScript = null
     }
   }
@@ -368,7 +397,7 @@ def setDefaults(rawSettings, defaults) {
     if (!rawSettings.stage.afterScript.shell) {
       rawSettings.stage.afterScript.shell = '/bin/sh'
     }
-    if (!rawSettings.stage.afterScript.script) {
+    if (!rawSettings.stage.afterScript.script && !rawSettings.stage.afterScript.commands) {
       rawSettings.stage.afterScript = null
     }
   }
@@ -376,6 +405,9 @@ def setDefaults(rawSettings, defaults) {
   // check prod
   if (!rawSettings.prod) {
     rawSettings.prod = [:]
+  }
+  if (!rawSettings.prod.namespace) {
+    rawSettings.prod.namespace = defaults.prodNamespace
   }
   if (!rawSettings.prod.cluster) {
     rawSettings.prod.cluster = defaults.targets.prodCluster
@@ -390,21 +422,21 @@ def setDefaults(rawSettings, defaults) {
   if (rawSettings.prod.beforeScript) {
     rawSettings.prod.beforeScript.image = 
       rawSettings.prod.beforeScript.image ? rawSettings.prod.beforeScript.image : defaults.images.script
-    if (!rawSettings.prod.beforeScript.script) {
+    if (!rawSettings.prod.beforeScript.script && !rawSettings.prod.beforeScript.commands) {
       rawSettings.prod.beforeScript = null
     }
   }
   if (rawSettings.prod.afterScript) {
     rawSettings.prod.afterScript.image = 
       rawSettings.prod.afterScript.image ? rawSettings.prod.afterScript.image : defaults.images.script
-    if (!rawSettings.prod.afterScript.script) {
+    if (!rawSettings.prod.afterScript.script && !rawSettings.prod.afterScript.commands) {
       rawSettings.prod.afterScript = null
     }
   }
 
   if (rawSettings.tls) {
-    if (rawSettings.tls[defaults.stageNamespace]) {
-      for (conf in rawSettings.tls[defaults.stageNamespace]) {
+    if (rawSettings.tls[rawSettings.stage.namespace]) {
+      for (conf in rawSettings.tls[rawSettings.stage.namespace]) {
         if (!conf.name) {
           error("All tls configs have a 'name'")
         }
@@ -418,11 +450,11 @@ def setDefaults(rawSettings, defaults) {
         }
       }
     } else {
-      rawSettings.tls[defaults.stageNamespace] = []
+      rawSettings.tls[rawSettings.stage.namespace] = []
     }
 
-    if (rawSettings.tls[defaults.prodNamespace]) {
-      for (conf in rawSettings.tls[defaults.prodNamespace]) {
+    if (rawSettings.tls[rawSettings.prod.namespace]) {
+      for (conf in rawSettings.tls[rawSettings.prod.namespace]) {
         if (!conf.name) {
           error("All tls configs have a 'name'")
         }
@@ -436,7 +468,7 @@ def setDefaults(rawSettings, defaults) {
         }
       }
     } else {
-      rawSettings.tls[defaults.prodNamespace] = []
+      rawSettings.tls[rawSettings.prod.namespace] = []
     }
   }
 
