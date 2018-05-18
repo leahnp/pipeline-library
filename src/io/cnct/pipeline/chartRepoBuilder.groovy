@@ -1219,13 +1219,6 @@ def getScriptImages() {
           shell: test.shell])
       }
     }
-
-    for (build in pipeline.builds) {
-      if (build.script || build.commands )
-      check(scriptContainers, [name: containerName(build.image),
-        image: build.image,
-        shell: build.shell])
-    }
   }
 
   if (isMasterBuild || isSelfTest) {
@@ -1238,6 +1231,14 @@ def getScriptImages() {
       check(scriptContainers, [name: containerName(pipeline.prod.beforeScript.image),
         image: pipeline.prod.beforeScript.image,
         shell: pipeline.prod.beforeScript.shell])
+    }
+  }
+
+  for (build in pipeline.builds) {
+    if (build.script || build.commands ) {
+      check(scriptContainers, [name: containerName(build.image),
+        image: build.image,
+        shell: build.shell])
     }
   }
 
