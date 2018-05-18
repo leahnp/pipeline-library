@@ -564,6 +564,8 @@ def buildsProdHandler(scmVars) {
   def gitCommit = scmVars.GIT_COMMIT
   def chartsWithContainers = []
 
+  def parallelBinaryBuildSteps = [:]
+  def binaryBuildCounter = 0
   def parallelBuildSteps = [:]
   def parallelTagSteps = [:]
   def parallelPushSteps = [:]
@@ -579,7 +581,14 @@ def buildsProdHandler(scmVars) {
   container('vault') {
     stage('Collect build targets') {
       for (container in pipeline.builds) {
-        if (!container.script && !container.commands) {
+        if (container.script || container.commands) {
+          def description = "Executing binary build ${binaryBuildCounter} using ${container.image}"
+          def _container = container
+          parallelBinaryBuildSteps["binary-build-${binaryBuildCounter}"] = { 
+            executeUserScript(description, _container) 
+          }
+          binaryBuildCounter += 1 
+        } else {
           // build steps
           def buildCommandString = "docker build -t \
             ${defaults.docker.registry}/${container.image}:${useTag} --pull " 
@@ -634,8 +643,13 @@ def buildsProdHandler(scmVars) {
     }
   }
 
+  // build binaries
+  stage('Build binaries') {
+    parallel parallelBinaryBuildSteps
+  }
+
   container('docker') {
-    stage("Tagging with ${defaults.docker.prodTag} and pushing.") {
+    stage("Building docker files, tagging with ${defaults.docker.prodTag} and pushing.") {
       withCredentials(
         [usernamePassword(
           credentialsId: defaults.docker.credentials, 
