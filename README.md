@@ -699,11 +699,12 @@ Setting | Description
 
 ### Pipeline yaml example
 
+Below example was specifically written to use most features of the pipeline configuration:
+
 ```
 type: chart
 beforeScript:
   script: scripts/globalBefore.sh
-  shell: /bin/bash
 afterScript:
   image: alpine:latest
   script: scripts/globalAfter.sh
@@ -715,46 +716,105 @@ pullSecrets:
     password: secret/pull/quay
 envValues:
   - envVar: BUSYBOX_SECRET_VARIABLE
-    secret: secret/busybox/dummy
+    secret: jobs/demo/demovalue
   - envVar: BUSYBOX_PLAIN_VARIABLE
     value: THIS-IS-A-DUMMY-PLAIN-VAR-FOR-TESTING
-slack:
-  channel: #team-migrations
+  - envVar: GIT_COMMIT
+    env: GIT_COMMIT
+  - envVar: JOB_NAME
+    env: JOB_NAME
+helmRepos:
+  - name: incubator
+    url: https://kubernetes-charts-incubator.storage.googleapis.com
 builds:
-  - image: maratoid/pipeline-busybox
+  - image: bash:latest
+    script: scripts/generatefile.sh
+    shell: /bin/bash
+  - image: bash:latest
+    commands: |
+      echo "echo \"test from inline: running in ${PIPELINE_WORKSPACE}\" > testfrominline.sh
+    shell: /bin/bash
+  - image: maratoid/pipeline-demo
     buildArgs: 
-      TEST_ARG: "something not default"
-    context: pipeline-busybox
-    chart: pipeline-busybox
+      - arg: GIT_COMMIT
+        env: GIT_COMMIT
+      - arg: JOB_NAME
+        env: JOB_NAME
+      - arg: SECRET_ARG
+        secret: jobs/demo/demovalue
+    context: pipeline-demo
+    dockerContext: .
+    chart: pipeline-demo
     value: images.image
 deployments:
-  - chart: pipeline-busybox
+  - chart: pipeline-demo
     timeout: 600
     retries: 2
-    release: pipeline-busybox
+    release: pipeline-demo
     test: 
       values:
         - key: pipeline.secretval
-          secret: secret/busybox/dummy
+          secret: jobs/demo/nested/test
         - key: pipeline.plainval
           value: THIS-IS-A-DUMMY-PLAIN-VAR-FOR-TESTING
     stage: 
       values:
         - key: pipeline.secretval
-          secret: secret/busybox/dummy
+          secret: jobs/demo/nested/stage
         - key: pipeline.plainval
           value: THIS-IS-A-DUMMY-PLAIN-VAR-FOR-TESTING
+        - key: ingress.staging.name
+          value: pipelinedemo-staging-ingress
+        - key: ingress.staging.host
+          value: pipelinedemo.staging.cnct.io
+        - key: ingress.staging.secret
+          value: pipelinedemo-staging-secret
+        - key: ingress.staging.path
+          value: /
       tests:
         - image: bash:latest
           script: scripts/stageTest.sh
-          shell: /bin/bash
+        - image: quay.io/maratoid/helm:latest
+          commands: |
+            echo "Testing KUBECONFIG (${KUBECONFIG}) injection:" 
+            kubectl version
+            kubectl get po -n pipeline-tools
     prod: 
       values:
         - key: pipeline.secretval
-          secret: secret/busybox/dummy
+          secret: jobs/demo/nested/prod
         - key: pipeline.plainval
           value: THIS-IS-A-DUMMY-PLAIN-VAR-FOR-TESTING
+        - key: ingress.prod.name
+          value: pipelinedemo-prod-ingress
+        - key: ingress.prod.host
+          value: pipelinedemo.prod.cnct.io
+        - key: ingress.prod.secret
+          value: pipelinedemo-prod-secret
+        - key: ingress.prod.path
+          value: /
+        - key: ingress.friendly.name
+          value: pipelinedemo-friendly-ingress
+        - key: ingress.friendly.host
+          value: pipelinealt.cnct.io
+        - key: ingress.friendly.secret
+          value: pipelinedemo-friendly-secret
+        - key: ingress.friendly.path
+          value: /
+tls:
+  staging:
+    - name: pipelinedemo-staging-cert
+      secretName: pipelinedemo-staging-secret
+      dnsName: pipelinedemo.staging.cnct.io
+  prod:
+    - name: pipelinedemo-prod-cert
+      secretName: pipelinedemo-prod-secret
+      dnsName: pipelinedemo.prod.cnct.io
+    - name: pipelinedemo-friendly-cert
+      secretName: pipelinedemo-friendly-secret
+      dnsName: pipelinealt.cnct.io
 test:
+  cluster: secret/test-cluster/config
   beforeScript:
     script: scripts/testBefore.sh
     shell: /bin/bash
@@ -762,20 +822,37 @@ test:
     image: alpine:latest
     script: scripts/testAfter.sh
 stage:
+  namespace: staging
+  cluster: secret/staging-cluster/config
+  deploy: true
   beforeScript:
     script: scripts/stageBefore.sh
     shell: /bin/bash
   afterScript:
     image: alpine:latest
-    script: scripts/stageAfter.sh    
+    commands: |
+      echo "THIS IS STAGE AFTER SCRIPT EXECUTING"
+      echo "INJECTED VARS"
+      echo "BUSYBOX_SECRET_VARIABLE is $BUSYBOX_SECRET_VARIABLE"
+      echo "BUSYBOX_PLAIN_VARIABLE is $BUSYBOX_PLAIN_VARIABLE"
+
+      echo "PIPELINE VARIABLES"
+      echo "PIPELINE_PROD_NAMESPACE is $PIPELINE_PROD_NAMESPACE"
+      echo "PIPELINE_STAGE_NAMESPACE is $PIPELINE_STAGE_NAMESPACE"
+      echo "PIPELINE_BUILD_ID is $PIPELINE_BUILD_ID"
+      echo "PIPELINE_JOB_NAME is $PIPELINE_JOB_NAME"
+      echo "PIPELINE_BUILD_NUMBER is $PIPELINE_BUILD_NUMBER"
+      echo "PIPELINE_WORKSPACE is $PIPELINE_WORKSPACE"   
 prod: 
+  namespace: prod
+  cluster: secret/prod-cluster/config
   beforeScript:
     script: scripts/prodBefore.sh
     shell: /bin/bash
   afterScript:
     image: alpine:latest
     script: scripts/prodAfter.sh 
-  doDeploy: versionfile
+  doDeploy: auto
 ```
 
 ## User scripts
@@ -797,6 +874,13 @@ The following environment variables are injected into all userscript containers:
 | `PIPELINE_JOB_NAME` | Jenksins job name | `test/PR-6` |
 | `PIPELINE_BUILD_NUMBER` | Jenksins build number | `1` |
 | `PIPELINE_WORKSPACE` | Path to Jenkins workspace in the container | `/home/jenkins/workspace/test_PR-6-U5VHDHDXSBXPPAUMV2CWOZMLZN63RMD3TNPQVTEDDUQI553ZSCRA` |
+
+The following environment vairables are injected into `tests` containers only:
+
+| Variable |  Purpose |  Example | 
+|:---       |:---:     |:---:    |
+| `KUBECONFIG` | Location of the target cluster kube config file |
+
 
 ## cert-manager and TLS support
 
