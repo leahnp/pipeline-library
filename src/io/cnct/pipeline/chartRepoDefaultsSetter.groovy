@@ -281,9 +281,7 @@ def setDefaults(rawSettings, defaults) {
     }
 
     rawSettings.configs = rawSettings.deployments
-  }
-
-  if (rawSettings.configs) {
+  } else if (rawSettings.configs) {
     for (config in rawSettings.configs) {
 
       if (!config.timeout) {
@@ -336,6 +334,9 @@ def setDefaults(rawSettings, defaults) {
     }
 
     rawSettings.deployments = rawSettings.configs
+  } else {
+    rawSettings.deployments = [:]
+    rawSettings.configs = [:]
   }
   
   // check test
