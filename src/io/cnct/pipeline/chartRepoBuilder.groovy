@@ -1130,7 +1130,7 @@ def destroyHandler(scmVars) {
       unstashCheck("${env.BUILD_ID}-kube-configs".replaceAll('-','_'))
 
       echo("Contents of ${kubeName(env.JOB_NAME)} namespace:")
-      sh("kubectl describe all --kubeconfig=${env.BUILD_ID}-test.kubeconfig --namespace ${kubeName(env.JOB_NAME)}")
+      sh("kubectl describe all --kubeconfig=${env.BUILD_ID}-test.kubeconfig --namespace ${kubeName(env.JOB_NAME)} || true")
       
       for (chart in pipeline.deployments) {
         if (chart.chart) {
@@ -1148,7 +1148,7 @@ def destroyHandler(scmVars) {
 
       parallel destroySteps
 
-      sh("kubectl delete namespace ${kubeName(env.JOB_NAME)} --kubeconfig=${env.BUILD_ID}-test.kubeconfig")
+      sh("kubectl delete namespace ${kubeName(env.JOB_NAME)} --kubeconfig=${env.BUILD_ID}-test.kubeconfig || true")
     }
   }
 
