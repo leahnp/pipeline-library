@@ -362,7 +362,7 @@ def runMerge() {
       chartProdHandler(scmVars)
       deployToProdHandler(scmVars)
       chartProdVersion(scmVars)
-      triggerUmbrellas(scmVars)
+      startTriggers(scmVars)
 
       // run after scripts
       executeUserScript('Executing global \'after\' scripts', pipeline.afterScript)
@@ -1033,18 +1033,18 @@ def chartProdVersion(scmVars) {
   }
 }
 
-// trigger builds for any umbrella charts, if present
-def triggerUmbrellas(scmVars) {
+// start any of the defined triggers, if present
+def startTriggers(scmVars) {
   def triggerSteps = [:]
   try {
     configFileProvider([configFile(fileId: "${env.JOB_NAME.split('/')[0]}-dependencies", variable: 'TRIGGER_PIPELINES')]) {
-      def triggerPipelines = env.TRIGGER_PIPELINES.tokenize(',').unique()
+      def triggerPipelines = readFile(env.TRIGGER_PIPELINES).tokenize(',').unique()
       for (trigger in triggerPipelines) {
         triggerSteps[trigger.toString()] = { build(job: "${trigger}/master", propagate: true, wait: true) }
       }
     }
   } catch (e) {
-    echo("No umbrella charts to trigger.")
+    echo("No triggers defined.")
   }
 
   if (triggerSteps.size() > 0) {
