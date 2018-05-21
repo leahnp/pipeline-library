@@ -362,6 +362,7 @@ def runMerge() {
       chartProdHandler(scmVars)
       deployToProdHandler(scmVars)
       chartProdVersion(scmVars)
+      startTriggers(scmVars)
 
       // run after scripts
       executeUserScript('Executing global \'after\' scripts', pipeline.afterScript)
@@ -1032,6 +1033,25 @@ def chartProdVersion(scmVars) {
   }
 }
 
+// start any of the defined triggers, if present
+def startTriggers(scmVars) {
+  def triggerSteps = [:]
+  try {
+    configFileProvider([configFile(fileId: "${env.JOB_NAME.split('/')[0]}-dependencies", variable: 'TRIGGER_PIPELINES')]) {
+      def triggerPipelines = readFile(env.TRIGGER_PIPELINES).tokenize(',').unique()
+      for (trigger in triggerPipelines) {
+        triggerSteps[trigger.toString()] = { build(job: "${trigger}/master", propagate: true, wait: true) }
+      }
+    }
+  } catch (e) {
+    echo("No triggers defined.")
+  }
+
+  if (triggerSteps.size() > 0) {
+    parallel triggerSteps
+  }
+}
+
 // run helm tests
 def helmTestHandler(scmVars) {
   container('helm') {
@@ -1110,7 +1130,7 @@ def destroyHandler(scmVars) {
       unstashCheck("${env.BUILD_ID}-kube-configs".replaceAll('-','_'))
 
       echo("Contents of ${kubeName(env.JOB_NAME)} namespace:")
-      sh("kubectl describe all --kubeconfig=${env.BUILD_ID}-test.kubeconfig --namespace ${kubeName(env.JOB_NAME)}")
+      sh("kubectl describe all --kubeconfig=${env.BUILD_ID}-test.kubeconfig --namespace ${kubeName(env.JOB_NAME)} || true")
       
       for (chart in pipeline.deployments) {
         if (chart.chart) {
@@ -1128,7 +1148,7 @@ def destroyHandler(scmVars) {
 
       parallel destroySteps
 
-      sh("kubectl delete namespace ${kubeName(env.JOB_NAME)} --kubeconfig=${env.BUILD_ID}-test.kubeconfig")
+      sh("kubectl delete namespace ${kubeName(env.JOB_NAME)} --kubeconfig=${env.BUILD_ID}-test.kubeconfig || true")
     }
   }
 
