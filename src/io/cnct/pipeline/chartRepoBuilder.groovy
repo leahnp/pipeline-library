@@ -109,7 +109,7 @@ def postCleanup(err) {
 
               for (chart in pipeline.deployments) {
                 if (chart.chart) {
-                  def commandString = "helm delete ${chart.release}-${kubeName(env.JOB_NAME)} --purge --tiller-namespace ${pipeline.helm.namespace} || true"
+                  def commandString = "helm delete ${helmReleaseName(chart.release + "-" + kubeName(env.JOB_NAME))} --purge --tiller-namespace ${pipeline.helm.namespace} || true"
                   helmCleanSteps["${chart.chart}-deploy-test"] = { 
                     withEnv(
                       [
@@ -841,7 +841,7 @@ def deployToTestHandler(scmVars) {
           commandString = """${commandString}
           helm dependency update --debug ${chartLocation(defaults, chart.chart)}
           helm package --debug ${chartLocation(defaults, chart.chart)}
-          helm install ${chartLocation(defaults, chart.chart)} --wait --timeout ${chart.timeout} --tiller-namespace ${pipeline.helm.namespace} --namespace ${kubeName(env.JOB_NAME)} --name ${chart.release}-${kubeName(env.JOB_NAME)}"""
+          helm install ${chartLocation(defaults, chart.chart)} --wait --timeout ${chart.timeout} --tiller-namespace ${pipeline.helm.namespace} --namespace ${kubeName(env.JOB_NAME)} --name ${helmReleaseName(chart.release + "-" + kubeName(env.JOB_NAME))}"""
 
           
           def setParams = envMapToSetParams(chart.test.values)
@@ -891,7 +891,7 @@ def deployToStageHandler(scmVars) {
             set +x
             helm init --client-only
             helm dependency update --debug ${chartLocation(defaults, chart.chart)}
-            helm upgrade --install --tiller-namespace ${pipeline.helm.namespace} --wait --timeout ${chart.timeout} --namespace ${pipeline.stage.namespace} ${chart.release}-${pipeline.stage.namespace} ${chartLocation(defaults, chart.chart)}""" 
+            helm upgrade --install --tiller-namespace ${pipeline.helm.namespace} --wait --timeout ${chart.timeout} --namespace ${pipeline.stage.namespace} ${helmReleaseName(chart.release + "-" + pipeline.stage.namespace)} ${chartLocation(defaults, chart.chart)}""" 
             
             def setParams = envMapToSetParams(chart.stage.values)
             commandString += setParams
@@ -959,7 +959,7 @@ def deployToProdHandler(scmVars) {
 
             commandString = """${commandString}
             helm dependency update --debug ${chartLocation(defaults, chart.chart)}
-            helm upgrade --install --wait --timeout ${chart.timeout} --tiller-namespace ${pipeline.helm.namespace} --repo https://${defaults.helm.registry} --version ${chartYaml.version} --namespace ${pipeline.prod.namespace} ${chart.release} ${chart.chart} """
+            helm upgrade --install --wait --timeout ${chart.timeout} --tiller-namespace ${pipeline.helm.namespace} --repo https://${defaults.helm.registry} --version ${chartYaml.version} --namespace ${pipeline.prod.namespace} ${helmReleaseName(chart.release)} ${chart.chart} """
             
             def setParams = envMapToSetParams(chart.prod.values)
             commandString += setParams
@@ -1063,7 +1063,7 @@ def helmTestHandler(scmVars) {
       for (chart in pipeline.deployments) {
         if (chart.chart) {
           def commandString = """
-          helm test --tiller-namespace ${pipeline.helm.namespace} --timeout ${chart.timeout} ${chart.release}-${kubeName(env.JOB_NAME)} --debug
+          helm test --tiller-namespace ${pipeline.helm.namespace} --timeout ${chart.timeout} ${helmReleaseName(chart.release + "-" + kubeName(env.JOB_NAME))} --debug
           """ 
 
           retry(chart.retries) {
@@ -1134,8 +1134,8 @@ def destroyHandler(scmVars) {
       
       for (chart in pipeline.deployments) {
         if (chart.chart) {
-          def commandString = "helm delete ${chart.release}-${kubeName(env.JOB_NAME)} --purge --tiller-namespace ${pipeline.helm.namespace}"
-          destroySteps["${chart.release}-${kubeName(env.JOB_NAME)}"] = { 
+          def commandString = "helm delete ${helmReleaseName(chart.release + "-" + kubeName(env.JOB_NAME))} --purge --tiller-namespace ${pipeline.helm.namespace}"
+          destroySteps["${helmReleaseName(chart.release + "-" + kubeName(env.JOB_NAME))}"] = { 
             withEnv(
               [
                 "KUBECONFIG=${env.BUILD_ID}-test.kubeconfig"
