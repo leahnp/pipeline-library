@@ -459,6 +459,26 @@ def buildsTestHandler(scmVars) {
     }
   }
 
+
+  // create klar job to scan image for vulnerabilities
+  // todo pass image/flags/clair addr
+  def klarJob = createKlarJob()
+    
+  toYamlFile(klarJob, "${pwd()}/klar-job.yaml")
+  // TODO print output
+  // todo capture exit value (1 or 0)
+  klarResult = sh("kubectl create -f ${pwd()}/klar-job.yaml --namespace ${namespace} ${kubeconfigStr}")
+
+  // fail pipeline if klar returns 1
+  if klarResult:
+    error("Docker image exceeds maximum vulnerabilities, check CVE information for more information")
+    break
+
+
+
+
+
+
   // build binaries
   stage('Build binaries') {
     parallel parallelBinaryBuildSteps
