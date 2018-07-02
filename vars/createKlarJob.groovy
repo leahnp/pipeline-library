@@ -32,6 +32,6 @@ def call() {
   ]
 
   // certConfig.metadata.name = certificateConf.name
-
+  echo klarJob
   return klarJob
 }

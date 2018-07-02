@@ -465,7 +465,7 @@ def buildsTestHandler(scmVars) {
   echo("heypal")
   def klarJob = createKlarJob()
   echo("potato")
-  echo klarJob
+  // echo klarJob
   toYamlFile(klarJob, "${pwd()}/klar-job.yaml")
   echo("catz")
   echo klarJob
