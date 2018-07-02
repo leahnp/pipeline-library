@@ -462,10 +462,11 @@ def buildsTestHandler(scmVars) {
 
   // create klar job to scan image for vulnerabilities
   // TODO pass image/flags/clair addr to createKlarJob()
+  echo("heypal")
   def klarJob = createKlarJob()
-    
+  echo("potato")
   toYamlFile(klarJob, "${pwd()}/klar-job.yaml")
-
+  echo("catz")
   sh("kubectl create -f ${pwd()}/klar-job.yaml --namespace ${namespace} ${kubeconfigStr}")
 
   // TODO loop to check when klar job finishes
