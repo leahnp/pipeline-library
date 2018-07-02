@@ -28,12 +28,12 @@ def call() {
             "args": "- quay.io/samsung_cnct/cluster-controller:prod",
           ]
         ]
-      ],
+      ]
     ]
   ]
 
   // certConfig.metadata.name = certificateConf.name
   echo("dundun")
-  echo klarJob
+  // echo klarJob
   return klarJob
 }

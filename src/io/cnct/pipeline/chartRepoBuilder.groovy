@@ -1,5 +1,6 @@
 // /src/io/cnct/pipeline/chartRepoBuilder.groovy
 package io.cnct.pipeline;
+import groovy.json.JsonOutput.*
 
 def executePipeline(pipelineDef) {
   // script globals initialized in initializeHandler
@@ -468,7 +469,7 @@ def buildsTestHandler(scmVars) {
   // echo klarJob
   toYamlFile(klarJob, "${pwd()}/klar-job.yaml")
   echo("catz")
-  echo klarJob
+  echo(prettyPrint(toJson(klarJob)))
   // sh("kubectl create -f ${pwd()}/klar-job.yaml --namespace ${namespace} ${kubeconfigStr}")
   echo("dogz")
   // TODO loop to check when klar job finishes
