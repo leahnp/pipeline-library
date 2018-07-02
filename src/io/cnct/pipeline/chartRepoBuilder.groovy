@@ -461,20 +461,23 @@ def buildsTestHandler(scmVars) {
 
 
   // create klar job to scan image for vulnerabilities
-  // todo pass image/flags/clair addr
+  // TODO pass image/flags/clair addr to createKlarJob()
   def klarJob = createKlarJob()
     
   toYamlFile(klarJob, "${pwd()}/klar-job.yaml")
-  // TODO print output
-  // todo capture exit value (1 or 0)
-  klarResult = sh("kubectl create -f ${pwd()}/klar-job.yaml --namespace ${namespace} ${kubeconfigStr}")
+
+  sh("kubectl create -f ${pwd()}/klar-job.yaml --namespace ${namespace} ${kubeconfigStr}")
+
+  // TODO loop to check when klar job finishes
+
+  // TODO print out klar logs
+
+  // TODO capture exit value in klarResult var
 
   // fail pipeline if klar returns 1
-  if klarResult:
-    error("Docker image exceeds maximum vulnerabilities, check CVE information for more information")
-    break
-
-
+  // if klarResult:
+  //   error("Docker image exceeds maximum vulnerabilities, check Klar CVE report for more information")
+  //   break
 
 
 
