@@ -465,10 +465,10 @@ def buildsTestHandler(scmVars) {
   echo("heypal")
   def klarJob = createKlarJob()
   echo("potato")
-  echo(klarJob)
+  echo klarJob
   toYamlFile(klarJob, "${pwd()}/klar-job.yaml")
   echo("catz")
-  echo(klarJob)
+  echo klarJob
   sh("kubectl create -f ${pwd()}/klar-job.yaml --namespace ${namespace} ${kubeconfigStr}")
 
   // TODO loop to check when klar job finishes
