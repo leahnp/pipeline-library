@@ -9,6 +9,7 @@
 // dynamic clair address?
 
 def call() {
+  echo("beans")
 
   def klarJob = [
     "apiVersion": "batch/v1",
