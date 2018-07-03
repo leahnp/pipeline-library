@@ -470,19 +470,19 @@ def buildsTestHandler(scmVars) {
   echo("catz")
 
 
-  unstashCheck("${env.BUILD_ID}-kube-configs".replaceAll('-','_'))
+  // unstashCheck("${env.BUILD_ID}-kube-configs".replaceAll('-','_'))
 
-  // clean up failed releases if present
-  withEnv(
-  [
-    "KUBECONFIG=${env.BUILD_ID}-test.kubeconfig"
-  ]) {
-    echo(KUBECONFIG)
-    sh("kubectl create -f ./klar-job.yaml --namespace ${pipeline.stage.namespace}")
-  }
+  // // clean up failed releases if present
+  // withEnv(
+  // [
+  //   "KUBECONFIG=${env.BUILD_ID}-test.kubeconfig"
+  // ]) {
+  //   echo(KUBECONFIG)
+  //   sh("kubectl create -f ./klar-job.yaml --namespace ${pipeline.stage.namespace}")
+  // }
   // echo(prettyPrint(toJson(klarJob)))/
   // echo (klarJob.toMapString())
-  // sh("kubectl create -f ${pwd()}/klar-job.yaml --namespace ${namespace} ${kubeconfigStr}")
+  sh("kubectl create -f ${pwd()}/klar-job.yaml --namespace pipeline-tools")
 
   // KUBECTL_OUTPUT = sh (
   //   script: 'kubectl create -f ${pwd()}/klar-job.yaml --namespace ${namespace} ${kubeconfigStr}',
