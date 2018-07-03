@@ -470,7 +470,13 @@ def buildsTestHandler(scmVars) {
   echo("catz")
   // echo(prettyPrint(toJson(klarJob)))/
   echo (klarJob.toMapString())
-  sh("kubectl create -f ${pwd()}/klar-job.yaml --namespace ${namespace} ${kubeconfigStr}")
+  // sh("kubectl create -f ${pwd()}/klar-job.yaml --namespace ${namespace} ${kubeconfigStr}")
+
+  KUBECTL_OUTPUT = sh (
+    script: 'kubectl create -f ${pwd()}/klar-job.yaml --namespace ${namespace} ${kubeconfigStr}',
+    returnStdout: true
+  ).trim()
+  echo "glow: ${KUBECTL_OUTPUT}"
   echo("dogz")
   // TODO loop to check when klar job finishes
 
