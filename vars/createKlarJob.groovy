@@ -23,9 +23,9 @@ def call() {
       "template": [
         "spec": [
           "containers": [
-            "- name": "klar",
+            - name: "klar",
             "image": "leahnp/klar-scratch",
-            "args": "- quay.io/samsung_cnct/cluster-controller:prod",
+            "args": - "quay.io/samsung_cnct/cluster-controller:prod",
           ]
         ]
       ]
