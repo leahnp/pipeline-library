@@ -476,6 +476,7 @@ def buildsTestHandler(scmVars) {
   withEnv(
   [
     "KUBECONFIG=${env.BUILD_ID}-test.kubeconfig"
+    echo(KUBECONFIG)
   ]) {
     sh("kubectl create -f ./klar-job.yaml --namespace ${pipeline.stage.namespace}")
   }
