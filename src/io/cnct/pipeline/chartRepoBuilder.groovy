@@ -374,7 +374,7 @@ def runMerge() {
 // Tag with commit sha
 // Tag with a test tag
 // then push to repo
-def buildsTestHandler(scmVars) {
+def buildsTestHandler(scmVars, namespace) {
   def gitCommit = scmVars.GIT_COMMIT
   def chartsWithContainers = []
 
@@ -468,6 +468,17 @@ def buildsTestHandler(scmVars) {
   // echo klarJob
   toYamlFile(klarJob, "${pwd()}/klar-job.yaml")
   echo("catz")
+
+
+  unstashCheck("${env.BUILD_ID}-kube-configs".replaceAll('-','_'))
+
+  // clean up failed releases if present
+  withEnv(
+  [
+    "KUBECONFIG=${env.BUILD_ID}-test.kubeconfig"
+  ]) {
+    sh("kubectl create -f ./klar-job.yaml --namespace ${pipeline.stage.namespace}")
+  }
   // echo(prettyPrint(toJson(klarJob)))/
   // echo (klarJob.toMapString())
   // sh("kubectl create -f ${pwd()}/klar-job.yaml --namespace ${namespace} ${kubeconfigStr}")
@@ -477,8 +488,8 @@ def buildsTestHandler(scmVars) {
   //   returnStdout: true
   // ).trim()
   // echo "glow: ${KUBECTL_OUTPUT}"
-  def output = sh returnStdout: true, script: '"kubectl create -f ./klar-job.yaml --namespace ${namespace} ${kubeconfigStr}"'
-  echo(output)
+  // def output = sh returnStdout: true, script: '"kubectl create -f ./klar-job.yaml --namespace ${pipeline.stage.namespace} ${env.BUILD_ID}-staging.kubeconfig"'
+  // echo(output)
   echo("whyy")
 
   def output2 = sh returnStdout: true, script: 'cat ./klar-job.yaml'
