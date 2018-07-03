@@ -472,11 +472,15 @@ def buildsTestHandler(scmVars) {
   echo (klarJob.toMapString())
   // sh("kubectl create -f ${pwd()}/klar-job.yaml --namespace ${namespace} ${kubeconfigStr}")
 
-  KUBECTL_OUTPUT = sh (
-    script: 'kubectl create -f ${pwd()}/klar-job.yaml --namespace ${namespace} ${kubeconfigStr}',
-    returnStdout: true
-  ).trim()
-  echo "glow: ${KUBECTL_OUTPUT}"
+  // KUBECTL_OUTPUT = sh (
+  //   script: 'kubectl create -f ${pwd()}/klar-job.yaml --namespace ${namespace} ${kubeconfigStr}',
+  //   returnStdout: true
+  // ).trim()
+  // echo "glow: ${KUBECTL_OUTPUT}"
+
+  def ret = sh(script: 'kubectl create -f ${pwd()}/klar-job.yaml --namespace ${namespace} ${kubeconfigStr}', returnStdout: true)
+  println ret
+
   echo("dogz")
   // TODO loop to check when klar job finishes
 
