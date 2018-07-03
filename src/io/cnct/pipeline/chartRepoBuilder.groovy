@@ -374,7 +374,7 @@ def runMerge() {
 // Tag with commit sha
 // Tag with a test tag
 // then push to repo
-def buildsTestHandler(scmVars, namespace) {
+def buildsTestHandler(scmVars) {
   def gitCommit = scmVars.GIT_COMMIT
   def chartsWithContainers = []
 
