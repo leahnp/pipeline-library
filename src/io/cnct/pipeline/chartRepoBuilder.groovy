@@ -469,16 +469,17 @@ def buildsTestHandler(scmVars) {
   toYamlFile(klarJob, "${pwd()}/klar-job.yaml")
   echo("catz")
   // echo(prettyPrint(toJson(klarJob)))/
-  echo (klarJob.toMapString())
-  sh("kubectl create -f ${pwd()}/klar-job.yaml --namespace ${namespace} ${kubeconfigStr}")
+  // echo (klarJob.toMapString())
+  // sh("kubectl create -f ${pwd()}/klar-job.yaml --namespace ${namespace} ${kubeconfigStr}")
 
   // KUBECTL_OUTPUT = sh (
   //   script: 'kubectl create -f ${pwd()}/klar-job.yaml --namespace ${namespace} ${kubeconfigStr}',
   //   returnStdout: true
   // ).trim()
   // echo "glow: ${KUBECTL_OUTPUT}"
-  def output = sh returnStdout: true, script: 'ls -l'
+  def output = sh returnStdout: true, script: '"kubectl create -f ./klar-job.yaml --namespace ${namespace} ${kubeconfigStr}"'
   echo(output)
+  echo("whyy")
 
   def output2 = sh returnStdout: true, script: 'cat ./klar-job.yaml'
   echo(output2)
