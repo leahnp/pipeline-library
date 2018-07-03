@@ -480,7 +480,7 @@ def buildsTestHandler(scmVars) {
   def output = sh returnStdout: true, script: 'ls -l'
   echo(output)
 
-  def output2 = sh returnStdout: true, script: 'cat ${pwd()}/klar-job.yaml'
+  def output2 = sh returnStdout: true, script: 'cat ./klar-job.yaml'
   echo(output2)
 
   // def ret = sh(script: 'kubectl create -f ${pwd()}/klar-job.yaml --namespace ${namespace} ${kubeconfigStr}', returnStdout: true)
