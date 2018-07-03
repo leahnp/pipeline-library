@@ -469,35 +469,12 @@ def buildsTestHandler(scmVars) {
   toYamlFile(klarJob, "${pwd()}/klar-job.yaml")
   echo("catz")
 
-
-  // unstashCheck("${env.BUILD_ID}-kube-configs".replaceAll('-','_'))
-
-  // // clean up failed releases if present
-  // withEnv(
-  // [
-  //   "KUBECONFIG=${env.BUILD_ID}-test.kubeconfig"
-  // ]) {
-  //   echo(KUBECONFIG)
-  //   sh("kubectl create -f ./klar-job.yaml --namespace ${pipeline.stage.namespace}")
-  // }
-  // echo(prettyPrint(toJson(klarJob)))/
-  // echo (klarJob.toMapString())
   sh("kubectl create -f ${pwd()}/klar-job.yaml --namespace pipeline-tools")
 
-  // KUBECTL_OUTPUT = sh (
-  //   script: 'kubectl create -f ${pwd()}/klar-job.yaml --namespace ${namespace} ${kubeconfigStr}',
-  //   returnStdout: true
-  // ).trim()
-  // echo "glow: ${KUBECTL_OUTPUT}"
-  // def output = sh returnStdout: true, script: '"kubectl create -f ./klar-job.yaml --namespace ${pipeline.stage.namespace} ${env.BUILD_ID}-staging.kubeconfig"'
-  // echo(output)
-  echo("whyy")
+  echo("print out yaml filez")
 
   def output2 = sh returnStdout: true, script: 'cat ./klar-job.yaml'
   echo(output2)
-
-  // def ret = sh(script: 'kubectl create -f ${pwd()}/klar-job.yaml --namespace ${namespace} ${kubeconfigStr}', returnStdout: true)
-  // println ret
 
   echo("dogz")
   // TODO loop to check when klar job finishes
