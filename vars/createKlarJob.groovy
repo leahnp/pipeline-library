@@ -12,25 +12,43 @@ def call() {
   echo("beans")
 
   def klarJob = [
-    "apiVersion": "batch/v1",
-    "kind": "Job",
-    "metadata": [
-      "name": "klar"
-    ],
-
-    "spec": [
-      "backoffLimit": "4",
-      "template": [
-        "spec": [
-          "containers": [
-            - name: "klar",
-            "image": "leahnp/klar-scratch",
-            "args": - "quay.io/samsung_cnct/cluster-controller:prod",
+      "apiVersion": "batch/v1",
+      "kind": "Job",
+      "metadata": [
+        "name": "klar"
+      ],
+      "spec": [
+        "template": [
+          "spec": [
+            "containers": [
+              [
+                "name": "klar",
+                "image": "leahnp/klar-scratch",
+                "args": [
+                  "quay.io/samsung_cnct/fluentd-central:latest"
+                ],
+                "env": [
+                  [
+                    "name": "CLAIR_ADDR",
+                    "value": ""
+                  ],
+                  [
+                    "name": "CLAIR_OUTPUT",
+                    "value": "High"
+                  ],
+                  [
+                    "name": "CLAIR_THRESHOLD",
+                    "value": "10"
+                  ]
+                ]
+              ]
+            ],
+            "restartPolicy": "Never"
           ]
-        ]
+        ],
+        "backoffLimit": 4
       ]
     ]
-  ]
 
   // certConfig.metadata.name = certificateConf.name
   echo("dundun")
