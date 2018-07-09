@@ -486,7 +486,7 @@ def buildsTestHandler(scmVars) {
 
           while(klarjobstatus == "Running") { 
             // check again, continue
-            klarjobstatus = sh returnStdout: true, script: 'kubectl get po ${klarpod} --output=jsonpath={.status.phase}--namespace leah-test'
+            klarjobstatus = sh returnStdout: true, script: 'kubectl get po ${env.klarpod} --output=jsonpath={.status.phase}--namespace leah-test'
             continue
           }
 
@@ -494,7 +494,7 @@ def buildsTestHandler(scmVars) {
 
           // TODO check both if klar was 1 or 0 or if the k8s pod failed, print result
 
-          def klarresult = sh returnStdout: true, script: 'kubectl logs ${klarpod} --namespace leah-test'
+          def klarresult = sh returnStdout: true, script: 'kubectl logs ${env.klarpod} --namespace leah-test'
           echo(klarresult)
 
           sh("kubectl delete job klar --namespace leah-test")
