@@ -473,13 +473,34 @@ def buildsTestHandler(scmVars) {
           // sh("kubectl create -f ${pwd()}/klar-job.yaml --namespace pipeline-tools")
           sh("kubectl create -f ${pwd()}/klar-job.yaml --namespace leah-test")
 
-          echo("print out yaml filez")
 
-          def output2 = sh returnStdout: true, script: 'cat ./klar-job.yaml'
-          echo(output2)
+          def klarpod = sh returnStdout: true, script: 'kubectl get pods --selector=job-name=klar --output=jsonpath={.items..metadata.name} --namespace leah-test'
+          echo(klarpod)
+          def klarjobstatus = sh returnStdout: true, script: 'kubectl get po ${klarpod} --output=jsonpath={.status.phase}--namespace leah-test'
+
+          // until klarjobstatus is 'Succeeded':
 
           echo("dogz")
           // TODO loop to check when klar job finishes
+          // kubectl wait --for=condition=complete job/myjob
+
+          while(klarjobstatus == "Running") { 
+            // check again, continue
+            klarjobstatus = sh returnStdout: true, script: 'kubectl get po ${klarpod} --output=jsonpath={.status.phase}--namespace leah-test'
+            continue
+          }
+
+          echo(klarjobstatus)
+
+          // TODO check both if klar was 1 or 0 or if the k8s pod failed, print result
+
+          def klarresult = sh returnStdout: true, script: 'kubectl logs ${klarpod} --namespace leah-test'
+          echo(klarresult)
+
+          sh("kubectl delete job klar --namespace leah-test")
+
+
+
 
           // TODO print out klar logs
 
