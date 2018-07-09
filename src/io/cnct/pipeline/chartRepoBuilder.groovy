@@ -498,7 +498,12 @@ def buildsTestHandler(scmVars) {
           def klarresult = sh returnStdout: true, script: "kubectl logs ${klarpod} --namespace leah-test"
           echo(klarresult)
 
-          sh("kubectl delete job klar --namespace leah-test")
+          def klarexitcode = sh returnStdout: true, script: "kubectl get pod ${klarpod} -o go-template='{{range .status.containerStatuses}}{{.lastState.terminated.message}}{{end}}'"
+          echo(klarexitcode)
+
+
+
+          // sh("kubectl delete job klar --namespace leah-test")
 
 
 
