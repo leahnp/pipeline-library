@@ -30,7 +30,7 @@ def call() {
                 "env": [
                   [
                     "name": "CLAIR_ADDR",
-                    "value": "10.41.99.111:6060"
+                    "value": "clairsvc:6060"
                   ],
                   [
                     "name": "CLAIR_OUTPUT",
