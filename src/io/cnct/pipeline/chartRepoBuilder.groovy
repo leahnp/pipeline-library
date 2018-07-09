@@ -494,8 +494,7 @@ def buildsTestHandler(scmVars) {
       echo(klarexitcode)
 
       if (klarexitcode == 1) {
-        error("Docker image exceeds maximum vulnerabilities, check Klar CVE report for more information\n
-               The CVE report will include a link to the CVE and information on what version includes a fix")
+        error("Docker image exceeds maximum vulnerabilities, check Klar CVE report for more information. The CVE report will include a link to the CVE and information on what version includes a fix")
         break
       }
 
