@@ -8,7 +8,7 @@
 // dynamic flags
 // dynamic clair address?
 
-def call() {
+def call(imageUrl) {
   echo("beans")
 
   def klarJob = [
@@ -25,7 +25,7 @@ def call() {
                 "name": "klar",
                 "image": "leahnp/klar-scratch",
                 "args": [
-                  "quay.io/samsung_cnct/fluentd-central:latest"
+                  imageUrl
                 ],
                 "env": [
                   [
@@ -51,6 +51,7 @@ def call() {
     ]
 
   // certConfig.metadata.name = certificateConf.name
+  // spec.template.spec.containers.image = imageUrl
   echo("dundun")
   // echo klarJob
   return klarJob
