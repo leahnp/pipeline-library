@@ -459,34 +459,38 @@ def buildsTestHandler(scmVars) {
     }
   }
 
+  container('helm') {
+         stage('Creating Klar job') {
+          // create klar job to scan image for vulnerabilities
+          // TODO pass image/flags/clair addr to createKlarJob()
+          echo("heypal")
+          def klarJob = createKlarJob()
+          echo("potato")
+          // echo klarJob
+          toYamlFile(klarJob, "${pwd()}/klar-job.yaml")
+          echo("catz")
 
-  // create klar job to scan image for vulnerabilities
-  // TODO pass image/flags/clair addr to createKlarJob()
-  echo("heypal")
-  def klarJob = createKlarJob()
-  echo("potato")
-  // echo klarJob
-  toYamlFile(klarJob, "${pwd()}/klar-job.yaml")
-  echo("catz")
+          sh("kubectl create -f ${pwd()}/klar-job.yaml --namespace pipeline-tools")
 
-  sh("kubectl create -f ${pwd()}/klar-job.yaml --namespace pipeline-tools")
+          echo("print out yaml filez")
 
-  echo("print out yaml filez")
+          def output2 = sh returnStdout: true, script: 'cat ./klar-job.yaml'
+          echo(output2)
 
-  def output2 = sh returnStdout: true, script: 'cat ./klar-job.yaml'
-  echo(output2)
+          echo("dogz")
+          // TODO loop to check when klar job finishes
 
-  echo("dogz")
-  // TODO loop to check when klar job finishes
+          // TODO print out klar logs
 
-  // TODO print out klar logs
+          // TODO capture exit value in klarResult var
 
-  // TODO capture exit value in klarResult var
+          // fail pipeline if klar returns 1
+          // if klarResult:
+          //   error("Docker image exceeds maximum vulnerabilities, check Klar CVE report for more information")
+          //   break
+         }
+  }
 
-  // fail pipeline if klar returns 1
-  // if klarResult:
-  //   error("Docker image exceeds maximum vulnerabilities, check Klar CVE report for more information")
-  //   break
 
 
 
