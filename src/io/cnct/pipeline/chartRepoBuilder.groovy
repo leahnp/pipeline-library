@@ -488,7 +488,7 @@ def buildsTestHandler(scmVars) {
           def klarresult = sh returnStdout: true, script: "kubectl logs ${klarpod} --namespace leah-test"
           echo(klarresult)
 
-          def klarexitcode = sh returnStdout: true, script: "kubectl get pod ${klarpod} -o go-template='{{range .status.containerStatuses}}{{.state.terminated.exitCode}}{{end}}' -namespace leah-test"
+          def klarexitcode = sh returnStdout: true, script: "kubectl get pod ${klarpod} -o go-template='{{range .status.containerStatuses}}{{.state.terminated.exitCode}}{{end}}' --namespace leah-test"
           echo(klarexitcode)
 
           if (klarexitcode == 1) {
