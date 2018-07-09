@@ -461,13 +461,13 @@ def buildsTestHandler(scmVars) {
 
   container('helm') {
     stage('Creating Klar job') {
-      def imageUrl = ${defaults.docker.registry}/${container.image}:${useTag}
+      def imageUrl = "${defaults.docker.registry}/${container.image}:${useTag}"
       // create klar job to scan image for vulnerabilities
       // TODO pass image/flags/clair addr to createKlarJob()
 
       // TODO pass real image
 
-      def klarJob = createKlarJob()
+      def klarJob = createKlarJob(imageUrl)
 
       toYamlFile(klarJob, "${pwd()}/klar-job.yaml")
       sh("kubectl create -f ${pwd()}/klar-job.yaml --namespace leah-test")
