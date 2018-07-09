@@ -463,27 +463,19 @@ def buildsTestHandler(scmVars) {
          stage('Creating Klar job') {
           // create klar job to scan image for vulnerabilities
           // TODO pass image/flags/clair addr to createKlarJob()
-          echo("heypal")
-          def klarJob = createKlarJob()
-          echo("potato")
-          // echo klarJob
-          toYamlFile(klarJob, "${pwd()}/klar-job.yaml")
-          echo("catz")
 
-          // sh("kubectl create -f ${pwd()}/klar-job.yaml --namespace pipeline-tools")
+          def klarJob = createKlarJob()
+
+          toYamlFile(klarJob, "${pwd()}/klar-job.yaml")
           sh("kubectl create -f ${pwd()}/klar-job.yaml --namespace leah-test")
 
 
           def klarpod = sh returnStdout: true, script: "kubectl get pods --selector=job-name=klar --output=jsonpath={.items..metadata.name} --namespace leah-test"
           echo(klarpod)
           sleep(3)
+
           def klarjobstatus = sh returnStdout: true, script: "kubectl get po ${klarpod} --output=jsonpath={.status.phase} --namespace leah-test"
 
-          // until klarjobstatus is 'Succeeded':
-
-          echo("dogz")
-          // TODO loop to check when klar job finishes
-          // kubectl wait --for=condition=complete job/myjob
 
           while(klarjobstatus == "Running") { 
             // check again, continue
@@ -493,29 +485,21 @@ def buildsTestHandler(scmVars) {
 
           echo(klarjobstatus)
 
-          // TODO check both if klar was 1 or 0 or if the k8s pod failed, print result
-
           def klarresult = sh returnStdout: true, script: "kubectl logs ${klarpod} --namespace leah-test"
           echo(klarresult)
 
-          def klarexitcode = sh returnStdout: true, script: "kubectl get pod ${klarpod} -o go-template='{{range .status.containerStatuses}}{{.lastState.terminated.message}}{{end}}'"
+          def klarexitcode = sh returnStdout: true, script: "kubectl get pod ${klarpod} -o go-template='{{range .status.containerStatuses}}{{.state.terminated.exitCode}}{{end}}' -namespace leah-test"
           echo(klarexitcode)
 
+          if (klarexitcode == 1) {
+            error("Docker image exceeds maximum vulnerabilities, check Klar CVE report for more information")
+            break
+          }
 
+          // TODO fail if klar pod fails/errors/ etc
 
-          // sh("kubectl delete job klar --namespace leah-test")
+          sh("kubectl delete job klar --namespace leah-test")
 
-
-
-
-          // TODO print out klar logs
-
-          // TODO capture exit value in klarResult var
-
-          // fail pipeline if klar returns 1
-          // if klarResult:
-          //   error("Docker image exceeds maximum vulnerabilities, check Klar CVE report for more information")
-          //   break
          }
   }
 
