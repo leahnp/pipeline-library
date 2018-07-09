@@ -476,7 +476,8 @@ def buildsTestHandler(scmVars) {
 
           def klarpod = sh returnStdout: true, script: "kubectl get pods --selector=job-name=klar --output=jsonpath={.items..metadata.name} --namespace leah-test"
           echo(klarpod)
-          def klarjobstatus = sh returnStdout: true, script: "kubectl get po ${klarpod} --output=jsonpath={.status.phase}--namespace leah-test"
+          sleep(3000)
+          def klarjobstatus = sh returnStdout: true, script: "kubectl get po ${klarpod} --output=jsonpath={.status.phase} --namespace leah-test"
 
           // until klarjobstatus is 'Succeeded':
 
@@ -486,7 +487,7 @@ def buildsTestHandler(scmVars) {
 
           while(klarjobstatus == "Running") { 
             // check again, continue
-            klarjobstatus = sh returnStdout: true, script: "kubectl get po ${klarpod} --output=jsonpath={.status.phase}--namespace leah-test"
+            klarjobstatus = sh returnStdout: true, script: "kubectl get po ${klarpod} --output=jsonpath={.status.phase} --namespace leah-test"
             continue
           }
 
