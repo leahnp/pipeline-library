@@ -24,7 +24,7 @@ def call(imageUrl) {
               [
                 "name": "klar",
                 "image": "leahnp/klar-scratch",
-                "args": imageUrl,
+                "args": imageUrl[0],
                 "env": [
                   [
                     "name": "CLAIR_ADDR",
