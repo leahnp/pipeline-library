@@ -466,7 +466,7 @@ def buildsTestHandler(scmVars) {
         // create klar job to scan image for vulnerabilities
         // TODO pass image/flags/clair addr to createKlarJob()
         def klarJob = createKlarJob(imageUrl)
-        echo(defaults.cveScan.maxCritical)
+        echo(defaults.cveScan.maxCritical.inspect())
 
         toYamlFile(klarJob, "${pwd()}/klar-job.yaml")
         sh("kubectl create -f ${pwd()}/klar-job.yaml --namespace leah-test")
