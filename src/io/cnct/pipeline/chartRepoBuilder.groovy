@@ -459,7 +459,7 @@ def buildsTestHandler(scmVars) {
     }
   }
 
-  container('helm') {
+  container('vault') {
     stage('Creating Klar job') {
       def imageUrl = "${defaults.docker.registry}/${container.image}:${useTag}"
       // create klar job to scan image for vulnerabilities
