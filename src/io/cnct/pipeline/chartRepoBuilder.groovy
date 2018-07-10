@@ -461,50 +461,52 @@ def buildsTestHandler(scmVars) {
 
   container('helm') {
     stage('Creating Klar job') {
-      // def imageUrl = "${defaults.docker.registry}/${container.image}:${useTag}"
-      def imageUrl = "quay.io/samsung_cnct/cluster-controller:prod"
-      // create klar job to scan image for vulnerabilities
-      // TODO pass image/flags/clair addr to createKlarJob()
+      for (container in pipeline.builds) {
+        def imageUrl = "${defaults.docker.registry}/${container.image}:${useTag}"
+        // def imageUrl = "quay.io/samsung_cnct/cluster-controller:prod"
+        // create klar job to scan image for vulnerabilities
+        // TODO pass image/flags/clair addr to createKlarJob()
 
-      // TODO pass real image
-      echo(imageUrl)
+        // TODO pass real image
+        echo(imageUrl)
 
-      def klarJob = createKlarJob(imageUrl)
+        def klarJob = createKlarJob(imageUrl)
 
-      toYamlFile(klarJob, "${pwd()}/klar-job.yaml")
-      sh("kubectl create -f ${pwd()}/klar-job.yaml --namespace leah-test")
+        toYamlFile(klarJob, "${pwd()}/klar-job.yaml")
+        sh("kubectl create -f ${pwd()}/klar-job.yaml --namespace leah-test")
 
 
-      def klarpod = sh returnStdout: true, script: "kubectl get pods --selector=job-name=klar --output=jsonpath={.items..metadata.name} --namespace leah-test"
-      echo(klarpod)
-      sleep(3)
+        def klarpod = sh returnStdout: true, script: "kubectl get pods --selector=job-name=klar --output=jsonpath={.items..metadata.name} --namespace leah-test"
+        echo(klarpod)
+        sleep(3)
 
-      def klarjobstatus = sh returnStdout: true, script: "kubectl get po ${klarpod} --output=jsonpath={.status.phase} --namespace leah-test"
+        def klarjobstatus = sh returnStdout: true, script: "kubectl get po ${klarpod} --output=jsonpath={.status.phase} --namespace leah-test"
 
-      // wait for klar to finish scanning docker image
-      while(klarjobstatus == "Running") { 
-        klarjobstatus = sh returnStdout: true, script: "kubectl get po ${klarpod} --output=jsonpath={.status.phase} --namespace leah-test"
-        continue
-      }
+        // wait for klar to finish scanning docker image
+        while(klarjobstatus == "Running") { 
+          klarjobstatus = sh returnStdout: true, script: "kubectl get po ${klarpod} --output=jsonpath={.status.phase} --namespace leah-test"
+          continue
+        }
 
-      echo(klarjobstatus)
+        echo(klarjobstatus)
 
-      def klarresult = sh returnStdout: true, script: "kubectl logs ${klarpod} --namespace leah-test"
-      echo(klarresult)
+        def klarresult = sh returnStdout: true, script: "kubectl logs ${klarpod} --namespace leah-test"
+        echo(klarresult)
 
-      def klarexitcode = sh returnStdout: true, script: "kubectl get pod ${klarpod} -o go-template='{{range .status.containerStatuses}}{{.state.terminated.exitCode}}{{end}}' --namespace leah-test"
-      echo(klarexitcode)
+        def klarexitcode = sh returnStdout: true, script: "kubectl get pod ${klarpod} -o go-template='{{range .status.containerStatuses}}{{.state.terminated.exitCode}}{{end}}' --namespace leah-test"
+        echo(klarexitcode)
 
-      if (klarexitcode == 1) {
-        error("Docker image exceeds maximum vulnerabilities, check Klar CVE report for more information. The CVE report will include a link to the CVE and information on what version includes a fix")
-        break
-      }
+        if (klarexitcode == 1) {
+          error("Docker image exceeds maximum vulnerabilities, check Klar CVE report for more information. The CVE report will include a link to the CVE and information on what version includes a fix")
+          break
+        }
 
-      // TODO fail if klar pod fails/errors/ etc
+        // TODO fail if klar pod fails/errors/ etc
 
-      sh("kubectl delete job klar --namespace leah-test")
+        sh("kubectl delete job klar --namespace leah-test")
 
-     }
+       }
+    }
   }
 
 
