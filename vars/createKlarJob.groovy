@@ -26,7 +26,7 @@ def call(imageUrl) {
                 "name": "klar",
                 "image": "leahnp/klar-scratch",
                 "args": [
-                  "quay.io/samsung_cnct/fluentd-central:latest"
+                  imageUrl
                 ],
                 "env": [
                   [
