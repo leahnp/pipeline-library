@@ -55,4 +55,7 @@ deployments:
   - charts
   - deployments
   - deployments/helm
+cveScan:
+  maxCritical: 0
+  ignore: False
 
