@@ -461,7 +461,8 @@ def buildsTestHandler(scmVars) {
 
   container('vault') {
     stage('Creating Klar job') {
-      def imageUrl = "${defaults.docker.registry}/${container.image}:${useTag}"
+      // def imageUrl = "${defaults.docker.registry}/${container.image}:${useTag}"
+      def imageUrl = "quay.io/samsung_cnct/cluster-controller:prod"
       // create klar job to scan image for vulnerabilities
       // TODO pass image/flags/clair addr to createKlarJob()
 
