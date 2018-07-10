@@ -463,14 +463,10 @@ def buildsTestHandler(scmVars) {
     stage('Creating Klar job') {
       for (container in pipeline.builds) {
         def imageUrl = "${defaults.docker.registry}/${container.image}:${useTag}"
-        // def imageUrl = "quay.io/samsung_cnct/cluster-controller:prod"
         // create klar job to scan image for vulnerabilities
         // TODO pass image/flags/clair addr to createKlarJob()
-
-        // TODO pass real image
-        echo(imageUrl)
-
         def klarJob = createKlarJob(imageUrl)
+        echo(defaults.cveScan.maxCritical)
 
         toYamlFile(klarJob, "${pwd()}/klar-job.yaml")
         sh("kubectl create -f ${pwd()}/klar-job.yaml --namespace leah-test")
