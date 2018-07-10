@@ -462,11 +462,16 @@ def buildsTestHandler(scmVars) {
   container('helm') {
     stage('Creating Klar job') {
       for (container in pipeline.builds) {
-        def imageUrl = "${defaults.docker.registry}/${container.image}:${useTag}"
+        String imageUrl = "${defaults.docker.registry}/${container.image}:${useTag}"
         // create klar job to scan image for vulnerabilities
         // TODO pass image/flags/clair addr to createKlarJob()
+        int maxCritical = defaults.cveScan.maxCritical.inspect()
+        echo(maxCritical.inspect())
+
+        
+
         def klarJob = createKlarJob(imageUrl)
-        echo(defaults.cveScan.maxCritical.inspect())
+
 
         toYamlFile(klarJob, "${pwd()}/klar-job.yaml")
         sh("kubectl create -f ${pwd()}/klar-job.yaml --namespace leah-test")
