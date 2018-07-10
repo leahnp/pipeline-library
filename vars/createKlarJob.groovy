@@ -10,6 +10,7 @@
 
 def call(imageUrl) {
   echo("beans")
+  echo(imageUrl)
 
   def klarJob = [
       "apiVersion": "batch/v1",
@@ -24,7 +25,9 @@ def call(imageUrl) {
               [
                 "name": "klar",
                 "image": "leahnp/klar-scratch",
-                "args": imageUrl[0],
+                "args": [
+                  "quay.io/samsung_cnct/fluentd-central:latest"
+                ],
                 "env": [
                   [
                     "name": "CLAIR_ADDR",
