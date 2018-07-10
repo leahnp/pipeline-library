@@ -466,6 +466,7 @@ def buildsTestHandler(scmVars) {
       // TODO pass image/flags/clair addr to createKlarJob()
 
       // TODO pass real image
+      echo(imageUrl)
 
       def klarJob = createKlarJob(imageUrl)
 
@@ -504,7 +505,6 @@ def buildsTestHandler(scmVars) {
 
      }
   }
-
 
 
 
