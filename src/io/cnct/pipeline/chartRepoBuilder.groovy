@@ -459,7 +459,7 @@ def buildsTestHandler(scmVars) {
     }
   }
 
-  container('vault') {
+  container('helm') {
     stage('Creating Klar job') {
       // def imageUrl = "${defaults.docker.registry}/${container.image}:${useTag}"
       def imageUrl = "quay.io/samsung_cnct/cluster-controller:prod"
