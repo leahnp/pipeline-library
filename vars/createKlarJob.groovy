@@ -8,7 +8,7 @@
 // dynamic flags
 // dynamic clair address?
 
-def call(imageUrl) {
+def call(imageUrl, maxCritical) {
   echo("beans")
   echo(imageUrl)
 
@@ -35,11 +35,11 @@ def call(imageUrl) {
                   ],
                   [
                     "name": "CLAIR_OUTPUT",
-                    "value": "High"
+                    "value": "Critical"
                   ],
                   [
                     "name": "CLAIR_THRESHOLD",
-                    "value": "10"
+                    "value": maxCritical.toString()
                   ]
                 ]
               ]

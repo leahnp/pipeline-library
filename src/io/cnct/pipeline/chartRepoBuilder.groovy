@@ -462,23 +462,16 @@ def buildsTestHandler(scmVars) {
   container('helm') {
     // TODO - cleanup klar job if this step fails
     stage('Creating Klar job') {
-      String imageUrl = ""
-      for (container in pipeline.builds) {
-        imageUrl = "${defaults.docker.registry}/${container.image}:${useTag}"
-        echo(imageUrl)
-        break
-      }
-        echo("boom")
-        echo(imageUrl)
+        String imageUrl = ""
+        for (container in pipeline.builds) {
+          imageUrl = "${defaults.docker.registry}/${container.image}:${useTag}"
+
+          break
+        }
         // create klar job to scan image for vulnerabilities
         // TODO pass image/flags/clair addr to createKlarJob()
         int maxCritical = defaults.cveScan.maxCritical
-        echo("ponies")
-        echo(maxCritical.toString())
-
-        
-
-        def klarJob = createKlarJob(imageUrl)
+        def klarJob = createKlarJob(imageUrl, maxCritical)
 
 
         toYamlFile(klarJob, "${pwd()}/klar-job.yaml")
