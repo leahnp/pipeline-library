@@ -26,7 +26,7 @@ def call(imageUrl, maxCritical) {
                 "name": "klar",
                 "image": "leahnp/klar-scratch",
                 "args": [
-                  imageUrl
+                  'quay.io/samsung_cnct/kraken_ansible:latest'
                 ],
                 "env": [
                   [
@@ -35,11 +35,11 @@ def call(imageUrl, maxCritical) {
                   ],
                   [
                     "name": "CLAIR_OUTPUT",
-                    "value": "Critical"
+                    "value": "High"
                   ],
                   [
                     "name": "CLAIR_THRESHOLD",
-                    "value": maxCritical.toString()
+                    "value": '10'
                   ]
                 ]
               ]
