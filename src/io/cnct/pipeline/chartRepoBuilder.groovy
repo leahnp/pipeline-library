@@ -469,7 +469,7 @@ def buildsTestHandler(scmVars) {
         // TODO pass image/flags/clair addr to createKlarJob()
         int maxCritical = defaults.cveScan.maxCritical
         echo("ponies")
-        echo(maxCritical)
+        echo(maxCritical.toString())
 
         
 
