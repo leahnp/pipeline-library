@@ -461,11 +461,14 @@ def buildsTestHandler(scmVars) {
 
   container('helm') {
     stage('Creating Klar job') {
+      String imageUrl = ""
       for (container in pipeline.builds) {
-        String imageUrl = "${defaults.docker.registry}/${container.image}:${useTag}"
+        imageUrl = "${defaults.docker.registry}/${container.image}:${useTag}"
         echo(imageUrl)
         break
       }
+        echo("boom")
+        echo(imageUrl)
         // create klar job to scan image for vulnerabilities
         // TODO pass image/flags/clair addr to createKlarJob()
         int maxCritical = defaults.cveScan.maxCritical
