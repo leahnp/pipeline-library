@@ -460,10 +460,11 @@ def buildsTestHandler(scmVars) {
   }
 
   container('helm') {
+    // TODO - cleanup klar job if this step fails
     stage('Creating Klar job') {
       String imageUrl = ""
       for (container in pipeline.builds) {
-        imageUrl = ${defaults.docker.registry}/${container.image}:${useTag}
+        imageUrl = '${defaults.docker.registry}/${container.image}:${useTag}'
         echo(imageUrl)
         break
       }
