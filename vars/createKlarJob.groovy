@@ -26,7 +26,7 @@ def call(imageUrl, maxCritical) {
                 "name": "klar",
                 "image": "leahnp/klar-scratch",
                 "args": [
-                  'quay.io/samsung_cnct/cluster-controller:prod'
+                  'quay.io/samsung_cnct/fluentd_daemonset:latest'
                 ],
                 "env": [
                   [
