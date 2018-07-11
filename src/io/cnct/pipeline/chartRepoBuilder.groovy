@@ -463,6 +463,7 @@ def buildsTestHandler(scmVars) {
     stage('Creating Klar job') {
       for (container in pipeline.builds) {
         String imageUrl = "${defaults.docker.registry}/${container.image}:${useTag}"
+        echo(imageUrl)
         break
       }
         // create klar job to scan image for vulnerabilities
