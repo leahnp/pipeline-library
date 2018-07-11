@@ -477,7 +477,7 @@ def buildsTestHandler(scmVars) {
         toYamlFile(klarJob, "${pwd()}/klar-job.yaml")
         sh("kubectl create -f ${pwd()}/klar-job.yaml --namespace leah-test")
 
-
+        // TODO - this should be only 1 pod
         def klarpod = sh returnStdout: true, script: "kubectl get pods --selector=job-name=klar --output=jsonpath={.items..metadata.name} --namespace leah-test"
         echo(klarpod)
         sleep(3)
