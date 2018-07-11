@@ -26,7 +26,7 @@ def call(imageUrl) {
                 "name": "klar",
                 "image": "leahnp/klar-scratch",
                 "args": [
-                  imageUrl.inspect()
+                  imageUrl
                 ],
                 "env": [
                   [
