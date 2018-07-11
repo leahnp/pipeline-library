@@ -35,11 +35,11 @@ def call(imageUrl, maxCritical) {
                   ],
                   [
                     "name": "CLAIR_OUTPUT",
-                    "value": "High"
+                    "value": "Medium"
                   ],
                   [
                     "name": "CLAIR_THRESHOLD",
-                    "value": '10'
+                    "value": '1'
                   ]
                 ]
               ]
