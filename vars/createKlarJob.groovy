@@ -26,7 +26,7 @@ def call(imageUrl, maxCritical) {
                 "name": "klar",
                 "image": "leahnp/klar-scratch",
                 "args": [
-                  'quay.io/samsung_cnct/kraken_ansible:latest'
+                  'quay.io/samsung_cnct/cluster-controller:latest'
                 ],
                 "env": [
                   [
