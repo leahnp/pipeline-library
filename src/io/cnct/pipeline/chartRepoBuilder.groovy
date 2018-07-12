@@ -498,7 +498,7 @@ def buildsTestHandler(scmVars) {
         def klarexitcode = sh returnStdout: true, script: "kubectl get pod ${klarpod} -o go-template='{{range .status.containerStatuses}}{{.state.terminated.exitCode}}{{end}}' --namespace leah-test"
 
         boolean ignoreCVE = defaults.cveScan.ignore
-        if (!ignoreCVE) && (klarexitcode == "1") {
+        if ((!ignoreCVE) && (klarexitcode == "1")) {
           error("Docker image exceeds maximum vulnerabilities, check Klar CVE report for more information. The CVE report will include a link to the CVE and information on what version includes a fix")
           break
         }
