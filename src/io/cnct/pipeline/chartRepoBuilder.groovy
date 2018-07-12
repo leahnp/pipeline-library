@@ -81,6 +81,8 @@ def postCleanup(err) {
           sh("kubectl delete pvc jenkins-varlibdocker-${kubeName(env.JOB_NAME)} --namespace ${defaults.jenkinsNamespace} || true")
           // always cleanup storageclass
           sh("kubectl delete storageclass jenkins-storageclass-${kubeName(env.JOB_NAME)} || true")
+          // clean up klar job
+          sh("kubectl delete job klar --namespace leah-test || true")
           // always clean up pull secrets
           def deletePullSteps = [:]
           for (pull in pipeline.pullSecrets ) {
