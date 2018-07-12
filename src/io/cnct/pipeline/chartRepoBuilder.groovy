@@ -478,9 +478,10 @@ def buildsTestHandler(scmVars) {
         sh("kubectl create -f ${pwd()}/klar-job.yaml --namespace leah-test")
 
         // TODO - this should be only 1 pod
-        def klarpod = sh returnStdout: true, script: "kubectl get pods --selector=job-name=klar --output=jsonpath={.items..metadata.name} --namespace leah-test"
+        String klarpod = sh returnStdout: true, script: "kubectl get pods --selector=job-name=klar --output=jsonpath={.items..metadata.name} --namespace leah-test"
         echo(klarpod)
-        sleep(3)
+        // sleep(3)
+        // Bug TODO: when klar fails, more than one pod starts then errors, 
 
         def klarjobstatus = sh returnStdout: true, script: "kubectl get po ${klarpod} --output=jsonpath={.status.phase} --namespace leah-test"
 
