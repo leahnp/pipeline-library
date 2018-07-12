@@ -47,7 +47,7 @@ def call(imageUrl, maxCritical) {
             ],
           ]
         ],
-        "backoffLimit": 1
+        "backoffLimit": 0
       ]
     ]
 

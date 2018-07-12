@@ -481,9 +481,6 @@ def buildsTestHandler(scmVars) {
 
         // TODO - this should be only 1 pod
         String klarpod = sh returnStdout: true, script: "kubectl get pods --selector=job-name=klar --output=jsonpath={.items..metadata.name} --namespace leah-test"
-        echo(klarpod)
-        // sleep(3)
-        // Bug TODO: when klar fails, more than one pod starts then errors, 
 
         def klarjobstatus = sh returnStdout: true, script: "kubectl get po ${klarpod} --output=jsonpath={.status.phase} --namespace leah-test"
 
@@ -501,12 +498,17 @@ def buildsTestHandler(scmVars) {
         def klarexitcode = sh returnStdout: true, script: "kubectl get pod ${klarpod} -o go-template='{{range .status.containerStatuses}}{{.state.terminated.exitCode}}{{end}}' --namespace leah-test"
         echo(klarexitcode)
 
-        if (klarexitcode == 1) {
-          error("Docker image exceeds maximum vulnerabilities, check Klar CVE report for more information. The CVE report will include a link to the CVE and information on what version includes a fix")
+        if (klarexitcode == "1") {
+          error("pirates")
           break
         }
 
         // TODO fail if klar pod fails/errors/ etc
+        boolean maxCritical = defaults.cveScan.ignore
+        // if (!ignore) && (klarexitcode == 1) {
+        //   echo("oh boi")
+        // }
+
 
         sh("kubectl delete job klar --namespace leah-test")
 
