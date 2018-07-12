@@ -21,6 +21,7 @@ def call(imageUrl, maxCritical) {
       "spec": [
         "template": [
           "spec": [
+            "restartPolicy": "Never",
             "containers": [
               [
                 "name": "klar",
@@ -43,8 +44,7 @@ def call(imageUrl, maxCritical) {
                   ]
                 ]
               ]
-            ],
-            "restartPolicy": "Never"
+            ]
           ]
         ],
         "backoffLimit": 4
