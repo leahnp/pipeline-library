@@ -504,7 +504,7 @@ def buildsTestHandler(scmVars) {
         }
 
         // TODO fail if klar pod fails/errors/ etc
-        boolean maxCritical = defaults.cveScan.ignore
+        boolean ignoreCVE = defaults.cveScan.ignore
         // if (!ignore) && (klarexitcode == 1) {
         //   echo("oh boi")
         // }
