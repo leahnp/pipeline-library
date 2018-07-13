@@ -29,7 +29,7 @@ def call(imageUrl, maxCVE, maxLevel) {
                   ],
                   [
                     "name": "CLAIR_THRESHOLD",
-                    "value": maxLevel
+                    "value": maxLevel.inspect()
                   ]
                 ]
               ]
