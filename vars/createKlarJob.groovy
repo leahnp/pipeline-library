@@ -1,6 +1,5 @@
 def call(imageUrl, maxCve, maxLevel) {
-  echo(imageUrl)
-
+  echo("Creating job template to scan ${imageUrl} for vulnerabilities")
   def klarJobYaml = [
       "apiVersion": "batch/v1",
       "kind": "Job",

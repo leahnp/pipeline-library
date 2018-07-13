@@ -446,8 +446,8 @@ targets:
   testCluster: secret/test-cluster/config
 cveScan:
   maxCve: 0
-  maxLevel: High
-  ignore: True
+  maxLevel: Critical
+  ignore: False
 ```
 
 ## Shared workflow library code

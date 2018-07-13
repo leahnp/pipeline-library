@@ -463,47 +463,48 @@ def buildsTestHandler(scmVars) {
 
   container('helm') {
     stage('Creating Klar job') {
-        String imageUrl = ""
-        for (container in pipeline.builds) {
-          imageUrl = "${defaults.docker.registry}/${container.image}:${useTag}"
+      // TODO create samsung klar image
+      // TODO update ns once real clair + ds resources are generated in tahoe
+      String imageUrl = ""
+      for (container in pipeline.builds) {
+        imageUrl = "${defaults.docker.registry}/${container.image}:${useTag}"
 
-          break
-        }
-        // TODO create samsung klar image
-        // TODO update ns once real clair + ds resources are generated in tahoe
-        // add comments & readme docs
-        String maxCve = defaults.cveScan.maxCve
-        def maxLevel = defaults.cveScan.maxLevel
-        def klarJobTemplate = createKlarJob(imageUrl, maxCve, maxLevel)
+        break
+      }
+      String maxCve = defaults.cveScan.maxCve
+      def maxLevel = defaults.cveScan.maxLevel
+      def klarJobTemplate = createKlarJob(imageUrl, maxCve, maxLevel)
 
 
-        toYamlFile(klarJobTemplate, "${pwd()}/klar-job.yaml")
-        sh("kubectl create -f ${pwd()}/klar-job.yaml --namespace leah-test")
+      toYamlFile(klarJobTemplate, "${pwd()}/klar-job.yaml")
+      sh("kubectl create -f ${pwd()}/klar-job.yaml --namespace leah-test")
 
-        // create klar job
-        String klarPod = sh returnStdout: true, script: "kubectl get pods --selector=job-name=klar --output=jsonpath={.items..metadata.name} --namespace leah-test"
+      // create klar job
+      String klarPod = sh returnStdout: true, script: "kubectl get pods --selector=job-name=klar --output=jsonpath={.items..metadata.name} --namespace leah-test"
 
-        String klarJobStatus = sh returnStdout: true, script: "kubectl get po ${klarPod} --output=jsonpath={.status.phase} --namespace leah-test"
+      String klarJobStatus = sh returnStdout: true, script: "kubectl get po ${klarPod} --output=jsonpath={.status.phase} --namespace leah-test"
 
-        // wait for klar to finish scanning docker image
-        while(klarJobStatus == "Running") { 
-          klarJobStatus = sh returnStdout: true, script: "kubectl get po ${klarPod} --output=jsonpath={.status.phase} --namespace leah-test"
-          continue
-        }
+      // wait for klar to finish scanning docker image
+      while(klarJobStatus == "Running") { 
+        klarJobStatus = sh returnStdout: true, script: "kubectl get po ${klarPod} --output=jsonpath={.status.phase} --namespace leah-test"
+        continue
+      }
 
-        String klarResult = sh returnStdout: true, script: "kubectl logs ${klarPod} --namespace leah-test"
-        echo(klarResult)
+      // get CVE report and print to console
+      String klarResult = sh returnStdout: true, script: "kubectl logs ${klarPod} --namespace leah-test"
+      echo(klarResult)
 
-        String klarExitCode = sh returnStdout: true, script: "kubectl get pod ${klarPod} -o go-template='{{range .status.containerStatuses}}{{.state.terminated.exitCode}}{{end}}' --namespace leah-test"
+      String klarExitCode = sh returnStdout: true, script: "kubectl get pod ${klarPod} -o go-template='{{range .status.containerStatuses}}{{.state.terminated.exitCode}}{{end}}' --namespace leah-test"
 
-        boolean ignoreCVE = defaults.cveScan.ignore
-        if ((!ignoreCVE) && (klarExitCode == "1")) {
-          error("Docker image exceeds maximum vulnerabilities, check Klar CVE report for more information. The CVE report will include a link to the CVE and information on what version includes a fix")
-          break
-        }
+      boolean ignoreCVE = defaults.cveScan.ignore
+      // fail build if max vulnerabilities found
+      if ((!ignoreCVE) && (klarExitCode == "1")) {
+        error("Docker image exceeds maximum vulnerabilities, check Klar CVE report for more information. The CVE report will include a link to the CVE and information on what version includes a fix")
+        break
+      }
 
-        sh("kubectl delete job klar --namespace leah-test")
-       }
+      sh("kubectl delete job klar --namespace leah-test")
+     }
   }
 
 
