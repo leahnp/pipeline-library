@@ -57,7 +57,7 @@ deployments:
   - deployments/helm
 cveScan:
   maxCve: 0
-  maxLevel: Medium
-  ignore: True
+  maxLevel: High
+  ignore: False
 
 
