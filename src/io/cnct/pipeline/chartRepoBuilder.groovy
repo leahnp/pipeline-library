@@ -462,7 +462,6 @@ def buildsTestHandler(scmVars) {
   }
 
   container('helm') {
-    // make string vars
     stage('Creating Klar job') {
         String imageUrl = ""
         for (container in pipeline.builds) {
@@ -470,15 +469,15 @@ def buildsTestHandler(scmVars) {
 
           break
         }
-        // create klar job to scan image for vulnerabilities
-        // TODO add crit and max flag options
+        // TODO create samsung klar image
         // TODO update ns once real clair + ds resources are generated in tahoe
-        // add comments
-        int maxCritical = defaults.cveScan.maxCritical
-        def klarJob = createKlarJob(imageUrl, maxCritical)
+        // add comments & readme docs
+        int maxCVE = defaults.cveScan.maxCVE
+        int maxLevel = defaults.cveScan.maxLevel
+        def klarJobTemplate = createKlarJob(imageUrl, maxCVE, maxLevel)
 
 
-        toYamlFile(klarJob, "${pwd()}/klar-job.yaml")
+        toYamlFile(klarJobTemplate, "${pwd()}/klar-job.yaml")
         sh("kubectl create -f ${pwd()}/klar-job.yaml --namespace leah-test")
 
         // create klar job

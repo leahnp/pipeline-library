@@ -1,18 +1,7 @@
-// def call(certificateConf, issuerName) {
-//   if (!certificateConf) {
-//     return
-//   }
-
-
-// todo: correct image
-// dynamic flags
-// dynamic clair address?
-
-def call(imageUrl, maxCritical) {
-  echo("beans")
+def call(imageUrl, maxCVE, maxLevel) {
   echo(imageUrl)
 
-  def klarJob = [
+  def klarJobYaml = [
       "apiVersion": "batch/v1",
       "kind": "Job",
       "metadata": [
@@ -36,11 +25,11 @@ def call(imageUrl, maxCritical) {
                   ],
                   [
                     "name": "CLAIR_OUTPUT",
-                    "value": "Medium"
+                    "value": maxCVE
                   ],
                   [
                     "name": "CLAIR_THRESHOLD",
-                    "value": '1'
+                    "value": maxLevel
                   ]
                 ]
               ]
@@ -51,9 +40,5 @@ def call(imageUrl, maxCritical) {
       ]
     ]
 
-  // certConfig.metadata.name = certificateConf.name
-  // spec.template.spec.containers.image = imageUrl
-  echo("dundun")
-  // echo klarJob
-  return klarJob
+  return klarJobYaml
 }
