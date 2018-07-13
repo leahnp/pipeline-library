@@ -471,8 +471,8 @@ def buildsTestHandler(scmVars) {
 
         break
       }
-      String maxCve = defaults.cveScan.maxCve
-      def maxLevel = defaults.cveScan.maxLevel
+      String maxCve = pipeline.cveScan.maxCve
+      def maxLevel = pipeline.cveScan.maxLevel
       def klarJobTemplate = createKlarJob(imageUrl, maxCve, maxLevel)
 
 
