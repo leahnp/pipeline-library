@@ -113,6 +113,9 @@ def setDefaults(rawSettings, defaults) {
   }
 
   // check cve settings
+  if (!rawSettings.cveScan) {
+    rawSettings.cveScan = [:]
+  }
   if (!rawSettings.cveScan.maxCve) {
     rawSettings.cveScan.maxCve = defaults.cveScan.maxCve
   }
