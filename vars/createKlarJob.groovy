@@ -25,11 +25,11 @@ def call(imageUrl, maxCve, maxLevel) {
                   ],
                   [
                     "name": "CLAIR_OUTPUT",
-                    "value": maxCve
+                    "value": maxLevel.inspect()
                   ],
                   [
                     "name": "CLAIR_THRESHOLD",
-                    "value": maxLevel.inspect()
+                    "value": maxCve
                   ]
                 ]
               ]
