@@ -15,7 +15,7 @@ def call(imageUrl, maxCve, maxLevel) {
                 "name": "klar",
                 "image": "leahnp/klar-scratch",
                 "args": [
-                  'quay.io/samsung_cnct/fluentd_daemonset:latest'
+                  imageUrl
                 ],
                 "env": [
                   [
