@@ -462,7 +462,7 @@ def buildsTestHandler(scmVars) {
   }
 
   container('helm') {
-    stage('Creating Klar job') {
+    stage('Scan image for vulnerabilities') {
       // TODO create samsung klar image
       // TODO update ns once real clair + ds resources are generated in tahoe
       String imageUrl = ""
