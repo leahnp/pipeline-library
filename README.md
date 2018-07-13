@@ -395,7 +395,7 @@ Setting | Description
 `targets.stagingCluster` | Path to vault secret containing kube config for staging target cluster
 `targets.prodCluster` | Path to vault secret containing kube config for prod target cluster
 `cveScan.maxCve` | Number of vulnerabilities allowed to be present in container
-`cveScan.maxLevel` | Level (Critical, High, Medium, Low) of `cveScan.maxCve`
+`cveScan.maxLevel` | Level [Unknown Negligible Low Medium High Critical Defcon1] of `cveScan.maxCve`
 `cveScan.ignore` | True to pass CI even if `cveScan.maxCve` surpassed, False to to CI if `cveScan.maxCve` surpassed
 Example:
 
