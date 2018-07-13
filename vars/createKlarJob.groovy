@@ -1,4 +1,4 @@
-def call(imageUrl, maxCVE, maxLevel) {
+def call(imageUrl, maxCve, maxLevel) {
   echo(imageUrl)
 
   def klarJobYaml = [
@@ -25,7 +25,7 @@ def call(imageUrl, maxCVE, maxLevel) {
                   ],
                   [
                     "name": "CLAIR_OUTPUT",
-                    "value": maxCVE
+                    "value": maxCve
                   ],
                   [
                     "name": "CLAIR_THRESHOLD",

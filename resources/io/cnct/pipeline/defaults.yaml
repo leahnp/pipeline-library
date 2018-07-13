@@ -56,11 +56,8 @@ deployments:
   - deployments
   - deployments/helm
 cveScan:
-  # max num of CVEs
-  maxCVE: High
-  # level of CVE
-  maxLevel: 0
-  # override and pass CI even if max hit
+  maxCve: 0
+  maxLevel: High
   ignore: True
 
 

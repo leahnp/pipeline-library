@@ -472,9 +472,9 @@ def buildsTestHandler(scmVars) {
         // TODO create samsung klar image
         // TODO update ns once real clair + ds resources are generated in tahoe
         // add comments & readme docs
-        String maxCVE = defaults.cveScan.maxCVE
+        String maxCve = defaults.cveScan.maxCve
         def maxLevel = defaults.cveScan.maxLevel
-        def klarJobTemplate = createKlarJob(imageUrl, maxCVE, maxLevel)
+        def klarJobTemplate = createKlarJob(imageUrl, maxCve, maxLevel)
 
 
         toYamlFile(klarJobTemplate, "${pwd()}/klar-job.yaml")
