@@ -129,6 +129,10 @@ def setDefaults(rawSettings, defaults) {
           error("Can't have build entries with 'script or 'command' AND 'context'")
         }
 
+        if (entry.locationOverride) {
+          error("Can't have build entries with 'script or 'command' AND 'locationOverride'")
+        }
+
         if (entry.dockerContext) {
           error("Can't have build entries with 'script or 'command' AND 'dockerContext'")
         }
@@ -159,6 +163,10 @@ def setDefaults(rawSettings, defaults) {
           entry.buildArgs = []
         }
 
+        if (!entry.locationOverride) {
+          entry.locationOverride = ""
+        }
+
         for (arg in entry.buildArgs) {
           if (!arg.arg) {
             error("Each builds buildArg items must have 'arg' field")
@@ -179,6 +187,10 @@ def setDefaults(rawSettings, defaults) {
 
         if (entry.context) {
           error("Can't have rootfs entries with 'script or 'command' AND 'context'")
+        }
+
+        if (entry.locationOverride) {
+          error("Can't have build entries with 'script or 'command' AND 'locationOverride'")
         }
 
         if (entry.dockerContext) {
@@ -209,6 +221,10 @@ def setDefaults(rawSettings, defaults) {
 
         if (!entry.buildArgs) {
           entry.buildArgs = []
+        }
+
+        if (!entry.locationOverride) {
+          entry.locationOverride = ""
         }
 
         for (arg in entry.buildArgs) {
