@@ -1,17 +1,9 @@
-def call(defaults, locationOverride, context) {
-  if (locationOverride) {
-    if (fileExists("${locationOverride}/${context}/Dockerfile")) {
-      return "${locationOverride}/${context}/Dockerfile""
-    } else {
-      error "Could not find ${locationOverride}/${context}/Dockerfile"
-    }
-  }
-
+def call(defaults, packageName) {
   for (loc in defaults.packages ) {
-    if (fileExists("${loc}/${context}/Dockerfile")) {
-      return "${loc}/${context}/Dockerfile"
+    if (fileExists("${loc}/${packageName}/Dockerfile")) {
+      return "${loc}/${packageName}/Dockerfile"
     }
   }   
 
-  error "Could not find ${context}/Dockerfile in any of the ${defaults.packages.toString()} locations"
+  error "Could not find ${packageName}/Dockerfile in any of the ${defaults.packages.toString()} locations"
 }
