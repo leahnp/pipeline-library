@@ -490,6 +490,7 @@ def buildsTestHandler(scmVars) {
         continue
       }
 
+      sleep(10)
       // get CVE report and print to console
       String klarResult = sh returnStdout: true, script: "kubectl logs ${klarPod} --namespace leah-test"
       echo(klarResult)
