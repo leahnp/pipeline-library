@@ -148,7 +148,7 @@ def setDefaults(rawSettings, defaults) {
         }
 
         if (!entry.dockerContext) {
-          entry.dockerContext = "./builds/${entry.context}"
+          entry.dockerContext = "."
         }
 
         if (!entry.image) {
@@ -200,7 +200,7 @@ def setDefaults(rawSettings, defaults) {
         }
 
         if (!entry.dockerContext) {
-          entry.dockerContext = "./rootfs/${entry.context}"
+          entry.dockerContext = "."
         }
 
         if (!entry.image) {
