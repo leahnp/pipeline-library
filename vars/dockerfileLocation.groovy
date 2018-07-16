@@ -1,5 +1,5 @@
 def call(defaults, locationOverride, packageName) {
-  if (locationOverride?.trim()) {
+  if (locationOverride) {
     if (fileExists("${locationOverride}/${packageName}/Dockerfile")) {
       return "${locationOverride}/${packageName}/Dockerfile"
     } else {
