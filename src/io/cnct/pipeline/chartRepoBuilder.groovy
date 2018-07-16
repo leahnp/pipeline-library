@@ -433,7 +433,7 @@ def buildsTestHandler(scmVars) {
 
             buildCommandString += mapToParams('--build-arg', argMap)
           }
-          buildCommandString += " ${container.dockerContext} --file ${dockerfileLocation(defaults, container.context)}"
+          buildCommandString += " ${container.dockerContext} --file ${dockerfileLocation(defaults, container.locationOverride, container.context)}"
 
           parallelContainerBuildSteps["${container.image.replaceAll('/','_')}-build"] = { sh(buildCommandString) }
 
@@ -623,7 +623,7 @@ def buildsProdHandler(scmVars) {
             
             buildCommandString += mapToParams('--build-arg', argMap)
           }
-          buildCommandString += " ${container.dockerContext} --file ${dockerfileLocation(defaults, container.context)}"
+          buildCommandString += " ${container.dockerContext} --file ${dockerfileLocation(defaults, container.locationOverride, container.context)}"
           parallelBuildSteps["${container.image.replaceAll('/','_')}-build"] = { sh(buildCommandString) }
 
           def tagCommandString = "docker tag ${defaults.docker.registry}/${container.image}:${useTag} \

@@ -386,8 +386,8 @@ Setting | Description
 `docker.testTag` | Additonal tag for test stage images
 `docker.stageTag` | Additonal tag for staging stage images 
 `docker.prodTag` | Additonal tag for prod stage images
-`docker.packages` | Supported locations for dockerfile subfolders, relative to workspace root
-`docker.deployments` | Supported locations for chart subfolders, relative to workspace root
+`packages` | Supported locations for dockerfile subfolders, relative to workspace root
+`deployments` | Supported locations for chart subfolders, relative to workspace root
 `tls.prodIssuer` | Optional name of cert-manager ClusterIssuer for prod
 `tls.stagingIssuer` | Optional name of cert-manager ClusterIssuer for staging
 `tls.stagingIssuer` | Optional name of cert-manager ClusterIssuer for staging
@@ -441,6 +441,14 @@ targets:
   prodCluster: secret/prod-cluster/config
   stagingCluster: secret/staging-cluster/config
   testCluster: secret/test-cluster/config
+packages:
+  - rootfs
+  - build
+  - build/docker
+deployments:
+  - charts
+  - deployments
+  - deployments/helm
 ```
 
 ## Shared workflow library code
@@ -613,6 +621,7 @@ Setting | Description
 `rootfs.[].dockerContext` | Path relative to current `current workspace` that will serve as docker build context. I.e. specifying `.` will result in `docker build . -f /jenkins/workspace/rootfs/rootfs.[].context/Dockerfile`
 `rootfs.[].chart` | Name of the chart using this image, under `charts`
 `rootfs.[].value` | Dot-path to value under the chart's values.yaml that sets this image for the chart. I.e. `section.image.myawesomecontainer`
+`rootfs.[].locationOverride` | Per-image override for default dockerfile locations in [defaults.packages](#shared-workflow-library-defaults), relative to repository root. I.e. specifying `cmd` will result in `docker build . -f /jenkins/workspace/rootfs.[].locationOverride/rootfs.[].context/Dockerfile`
 
 #### configs / deployments
 
