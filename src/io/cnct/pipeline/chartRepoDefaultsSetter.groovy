@@ -164,7 +164,7 @@ def setDefaults(rawSettings, defaults) {
         }
 
         if (!entry.locationOverride) {
-          entry.locationOverride = ""
+          entry.locationOverride = ''
         }
 
         for (arg in entry.buildArgs) {
@@ -224,7 +224,7 @@ def setDefaults(rawSettings, defaults) {
         }
 
         if (!entry.locationOverride) {
-          entry.locationOverride = ""
+          entry.locationOverride = ''
         }
 
         for (arg in entry.buildArgs) {

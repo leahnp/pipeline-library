@@ -435,6 +435,8 @@ def buildsTestHandler(scmVars) {
           }
           buildCommandString += " ${container.dockerContext} --file ${dockerfileLocation(defaults, container.locationOverride, container.context)}"
 
+          echo("build string: ${buildCommandString}")
+
           parallelContainerBuildSteps["${container.image.replaceAll('/','_')}-build"] = { sh(buildCommandString) }
 
 
