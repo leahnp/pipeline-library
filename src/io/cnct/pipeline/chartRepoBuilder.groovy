@@ -82,7 +82,7 @@ def postCleanup(err) {
           // always cleanup storageclass
           sh("kubectl delete storageclass jenkins-storageclass-${kubeName(env.JOB_NAME)} || true")
           // clean up klar job
-          sh("kubectl delete job klar --namespace leah-test || true")
+          sh("kubectl delete job klar --namespace pipeline-tools || true")
           // always clean up pull secrets
           def deletePullSteps = [:]
           for (pull in pipeline.pullSecrets ) {
@@ -477,25 +477,25 @@ def buildsTestHandler(scmVars) {
 
 
       toYamlFile(klarJobTemplate, "${pwd()}/klar-job.yaml")
-      sh("kubectl create -f ${pwd()}/klar-job.yaml --namespace leah-test")
+      sh("kubectl create -f ${pwd()}/klar-job.yaml --namespace pipeline-tools")
 
       // create klar job
-      String klarPod = sh returnStdout: true, script: "kubectl get pods --selector=job-name=klar --output=jsonpath={.items..metadata.name} --namespace leah-test"
+      String klarPod = sh returnStdout: true, script: "kubectl get pods --selector=job-name=klar --output=jsonpath={.items..metadata.name} --namespace pipeline-tools"
 
-      String klarJobStatus = sh returnStdout: true, script: "kubectl get po ${klarPod} --output=jsonpath={.status.phase} --namespace leah-test"
+      String klarJobStatus = sh returnStdout: true, script: "kubectl get po ${klarPod} --output=jsonpath={.status.phase} --namespace pipeline-tools"
 
       // wait for klar to finish scanning docker image
       while(klarJobStatus == "Running") { 
-        klarJobStatus = sh returnStdout: true, script: "kubectl get po ${klarPod} --output=jsonpath={.status.phase} --namespace leah-test"
+        klarJobStatus = sh returnStdout: true, script: "kubectl get po ${klarPod} --output=jsonpath={.status.phase} --namespace pipeline-tools"
         continue
       }
 
       sleep(10)
       // get CVE report and print to console
-      String klarResult = sh returnStdout: true, script: "kubectl logs ${klarPod} --namespace leah-test"
+      String klarResult = sh returnStdout: true, script: "kubectl logs ${klarPod} --namespace pipeline-tools"
       echo(klarResult)
 
-      String klarExitCode = sh returnStdout: true, script: "kubectl get pod ${klarPod} -o go-template='{{range .status.containerStatuses}}{{.state.terminated.exitCode}}{{end}}' --namespace leah-test"
+      String klarExitCode = sh returnStdout: true, script: "kubectl get pod ${klarPod} -o go-template='{{range .status.containerStatuses}}{{.state.terminated.exitCode}}{{end}}' --namespace pipeline-tools"
 
       boolean ignoreCVE = pipeline.cveScan.ignore
       // fail build if max vulnerabilities found
@@ -504,7 +504,7 @@ def buildsTestHandler(scmVars) {
         break
       }
 
-      sh("kubectl delete job klar --namespace leah-test")
+      sh("kubectl delete job klar --namespace pipeline-tools")
      }
   }
 
