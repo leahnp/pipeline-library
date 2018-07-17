@@ -13,7 +13,7 @@ def call(imageUrl, maxCve, maxLevel) {
             "containers": [
               [
                 "name": "klar",
-                "image": "samsung_cnct/klar:0.0.2-a0ca0f21c6d44e437c76355913e2937e8d242030",
+                "image": "quay.io/samsung_cnct/klar:0.0.2-a0ca0f21c6d44e437c76355913e2937e8d242030",
                 "args": [
                   imageUrl
                 ],
