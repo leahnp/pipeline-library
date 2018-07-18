@@ -112,6 +112,20 @@ def setDefaults(rawSettings, defaults) {
     rawSettings.helm.namespace = defaults.helm.namespace
   }
 
+  // check cve settings
+  if (!rawSettings.cveScan) {
+    rawSettings.cveScan = [:]
+  }
+  if (!rawSettings.cveScan.maxCve) {
+    rawSettings.cveScan.maxCve = defaults.cveScan.maxCve
+  }
+  if (!rawSettings.cveScan.maxLevel) {
+    rawSettings.cveScan.maxLevel = defaults.cveScan.maxLevel
+  }
+  if (!rawSettings.cveScan.ignore) {
+    rawSettings.cveScan.ignore = defaults.cveScan.ignore
+  }
+
   // light checking on rootfs mappings
   // builds is equivalent to 'rootfs'
   if (rawSettings.builds && rawSettings.rootfs) {
