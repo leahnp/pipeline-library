@@ -82,7 +82,7 @@ def postCleanup(err) {
           // always cleanup storageclass
           sh("kubectl delete storageclass jenkins-storageclass-${kubeName(env.JOB_NAME)} || true")
           // clean up klar job
-          sh("kubectl delete job klar --namespace ${defaults.jenkinsNamespace} || true")
+          sh("kubectl delete job klar-${kubeName(env.JOB_NAME)} --namespace ${defaults.jenkinsNamespace} || true")
           // always clean up pull secrets
           def deletePullSteps = [:]
           for (pull in pipeline.pullSecrets ) {
@@ -464,6 +464,8 @@ def buildsTestHandler(scmVars) {
   container('helm') {
     stage('Scan image for vulnerabilities') {
       String imageUrl = ""
+      String jobName = "klar-${kubeName(env.JOB_NAME)}"
+      String clairService = "clairsvc:6060"
       for (container in pipeline.builds) {
         imageUrl = "${defaults.docker.registry}/${container.image}:${useTag}"
         break
@@ -471,14 +473,14 @@ def buildsTestHandler(scmVars) {
 
       String maxCve = pipeline.cveScan.maxCve
       def maxLevel = pipeline.cveScan.maxLevel
-      def klarJobTemplate = createKlarJob(imageUrl, maxCve, maxLevel)
+      def klarJobTemplate = createKlarJob(jobName, imageUrl, maxCve, maxLevel, clairService)
 
 
       toYamlFile(klarJobTemplate, "${pwd()}/klar-job.yaml")
       sh("kubectl create -f ${pwd()}/klar-job.yaml --namespace ${defaults.jenkinsNamespace}")
 
       // create klar job
-      String klarPod = sh returnStdout: true, script: "kubectl get pods --selector=job-name=klar --output=jsonpath={.items..metadata.name} --namespace ${defaults.jenkinsNamespace}"
+      String klarPod = sh returnStdout: true, script: "kubectl get pods --selector=job-name=${jobName} --output=jsonpath={.items..metadata.name} --namespace ${defaults.jenkinsNamespace}"
 
       String klarJobStatus = sh returnStdout: true, script: "kubectl get po ${klarPod} --output=jsonpath={.status.phase} --namespace ${defaults.jenkinsNamespace}"
 
@@ -501,7 +503,7 @@ def buildsTestHandler(scmVars) {
         break
       }
 
-      sh("kubectl delete job klar --namespace ${defaults.jenkinsNamespace}")
+      sh("kubectl delete job ${jobName} --namespace ${defaults.jenkinsNamespace}")
      }
   }
 

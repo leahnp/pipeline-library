@@ -1,10 +1,10 @@
-def call(imageUrl, maxCve, maxLevel) {
+def call(jobName, imageUrl, maxCve, maxLevel, clairService) {
   echo("Creating job template to scan ${imageUrl} for vulnerabilities")
   def klarJobYaml = [
       "apiVersion": "batch/v1",
       "kind": "Job",
       "metadata": [
-        "name": "klar"
+        "name": jobName
       ],
       "spec": [
         "template": [
@@ -20,7 +20,7 @@ def call(imageUrl, maxCve, maxLevel) {
                 "env": [
                   [
                     "name": "CLAIR_ADDR",
-                    "value": "clairsvc:6060"
+                    "value": clairService
                   ],
                   [
                     "name": "CLAIR_OUTPUT",
