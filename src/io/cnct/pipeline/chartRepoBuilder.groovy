@@ -460,9 +460,8 @@ def buildsTestHandler(scmVars) {
         }
       }
     }
-  }
 
-      stage('Collect cve scan targets') {
+    stage('Collect cve scan targets') {
       def imageUrl = ""
       def clairService = "clairsvc:6060"
       def maxCve = pipeline.cveScan.maxCve
@@ -517,7 +516,6 @@ def buildsTestHandler(scmVars) {
       }
     }
   }
-
 
   // build binaries
   stage('Build binaries') {
