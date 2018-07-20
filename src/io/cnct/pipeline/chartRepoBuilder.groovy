@@ -470,8 +470,8 @@ def buildsTestHandler(scmVars) {
 
       for (container in pipeline.builds) {
         
-        def jobName = "klar-${kubeName(env.JOB_NAME)-(container.image)}"
-        echo("jobName")
+        def jobName = "klar-${kubeName(container.image)-(env.JOB_NAME)}"
+        echo("dogz")
         echo(jobName)
         
 
