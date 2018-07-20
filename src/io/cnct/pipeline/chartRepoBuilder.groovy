@@ -81,8 +81,6 @@ def postCleanup(err) {
           sh("kubectl delete pvc jenkins-varlibdocker-${kubeName(env.JOB_NAME)} --namespace ${defaults.jenkinsNamespace} || true")
           // always cleanup storageclass
           sh("kubectl delete storageclass jenkins-storageclass-${kubeName(env.JOB_NAME)} || true")
-          // clean up klar job
-          sh("kubectl delete job klar-${kubeName(env.JOB_NAME)} --namespace ${defaults.jenkinsNamespace} || true")
           // always clean up pull secrets
           def deletePullSteps = [:]
           for (pull in pipeline.pullSecrets ) {
@@ -104,6 +102,18 @@ def postCleanup(err) {
               sh("helm list --namespace ${kubeName(env.JOB_NAME)} --short --failed --tiller-namespace ${pipeline.helm.namespace} | while read line; do helm delete \$line --purge --tiller-namespace ${pipeline.helm.namespace}; done")
               sh("helm list --namespace ${pipeline.stage.namespace} --short --failed --tiller-namespace ${pipeline.helm.namespace} | while read line; do helm delete \$line --purge --tiller-namespace ${pipeline.helm.namespace}; done")
             }
+
+            // clean up klar jobs
+            def parallelCveSteps = [:]
+            for (container in pipeline.builds) {
+              if (container.script || container.commands) {
+                continue
+              }
+
+              def cveJobName = kubeName(helmReleaseName("klar-${env.JOB_NAME}-${container.image}"))
+              parallelCveSteps[cveJobName] = { sh("kubectl delete job ${cveJobName} --namespace ${defaults.jenkinsNamespace} || true") }
+            }
+            parallel parallelCveSteps
 
             // additional cleanup on error that destroy handler might have missed
             if (err) {
@@ -462,7 +472,6 @@ def buildsTestHandler(scmVars) {
     }
 
     stage('Collect cve scan targets') {
-      def imageUrl = ""
       def clairService = "clairsvc:6060"
       def maxCve = pipeline.cveScan.maxCve
       def maxLevel = pipeline.cveScan.maxLevel
@@ -470,24 +479,20 @@ def buildsTestHandler(scmVars) {
 
       for (container in pipeline.builds) {
         
-        def jobName = "klar-${kubeName((container.image)-(env.JOB_NAME))}"
-        echo("dogz")
-        echo(jobName)
-        
+        if (container.script || container.commands) {
+          continue
+        }
+
+        def jobName = kubeName(helmReleaseName("klar-${env.JOB_NAME}-${container.image}"))
+        def imageUrl = "${defaults.docker.registry}/${container.image}:${useTag}"
+        def klarJobTemplate = createKlarJob(jobName.toString(), imageUrl.toString(), maxCve.toString(), maxLevel.toString(), clairService.toString())
 
         parallelCveSteps[jobName] = {
-          imageUrl = "${defaults.docker.registry}/${container.image}:${useTag}"
+          
           stage("Scan image ${imageUrl} for vulnerabilities") {
 
-            def klarJobTemplate = createKlarJob(
-              jobName.toString(), 
-              imageUrl.toString(), 
-              maxCve.toString(), 
-              maxLevel.toString(), 
-              clairService.toString())
-
-            toYamlFile(klarJobTemplate, "${pwd()}/klar-job.yaml")
-            sh("kubectl create -f ${pwd()}/klar-job.yaml --namespace ${defaults.jenkinsNamespace}")
+            toYamlFile(klarJobTemplate, "${pwd()}/${jobName}.yaml")
+            sh("kubectl create -f ${pwd()}/${jobName}.yaml --namespace ${defaults.jenkinsNamespace}")
 
             // create klar job
             def klarPod = sh returnStdout: true, script: "kubectl get pods --selector=job-name=${jobName} --output=jsonpath={.items..metadata.name} --namespace ${defaults.jenkinsNamespace}"
